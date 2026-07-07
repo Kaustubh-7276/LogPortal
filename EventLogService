@@ -1,0 +1,53 @@
+using BancslinkEventCollector.Helpers;
+using BancslinkEventCollector.Models;
+using System;
+using System.Collections.Generic;
+using System.Configuration;
+using System.Diagnostics.Eventing.Reader;
+namespace BancslinkEventCollector.Services
+{
+    public class EventLogService
+    {
+        public List<LogEntry> GetLogs(string findText)
+        {
+            var logs = new List<LogEntry>();
+            string channelName = ConfigurationManager.AppSettings["EventLogChannel"];
+            int defaultLimit = Convert.ToInt32(ConfigurationManager.AppSettings["DefaultLimit"]);
+            try
+            {
+                var query = new EventLogQuery(channelName, PathType.LogName);
+                using (var reader = new EventLogReader(query))
+                {
+                    EventRecord record;
+                    while ((record = reader.ReadEvent()) != null)
+                    {
+                        using (record)
+                        {
+                            string msg = record.FormatDescription() ?? "";
+                            bool isMatch = string.IsNullOrEmpty(findText) ||
+                                           msg.IndexOf(findText, StringComparison.OrdinalIgnoreCase) >= 0;
+
+                            if (isMatch)
+                            {
+                                logs.Add(new LogEntry
+                                {
+                                    Level = record.LevelDisplayName,
+                                    TimeCreated = record.TimeCreated,
+                                    Source = record.ProviderName,
+                                    EventId = record.Id,
+                                    Message = msg,
+                                    TellerId = TellerHelper.ExtractTeller(msg)
+                                });
+                            }
+
+                            if (string.IsNullOrEmpty(findText) && logs.Count >= defaultLimit) break;
+                        }
+                    }
+                }
+                logs.Reverse();
+            }
+            catch (Exception) { return logs; }
+            return logs;
+        }
+    }
+}
