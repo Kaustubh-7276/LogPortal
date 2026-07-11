@@ -89,6 +89,7 @@
         padding: 2px 6px;
         border-radius: 4px;
     }
+
     mark.highlight {
         background-color: #ffeb3b; /* Bright Yellow */
         color: #000;
@@ -96,6 +97,13 @@
         border-radius: 2px;
         font-weight: bold;
     }
+    .live-blink {animation: blink 1s infinite;}
+    @@keyframes blink {
+        0% {opacity: 1;}
+        50% {opacity: 0.3;}
+        100% {opacity: 1;}
+    }
+
 </style>
 
 <div class="container-fluid p-0">
@@ -112,6 +120,10 @@
                     <button type="button" onclick="location.href='@Url.Action("Index", "Log")'" class="btn btn-light border rounded-pill ms-1">Clear</button>
                 </form>
                 <button onclick="exportToCSV()" class="btn btn-export shadow-sm">📥 CSV</button>
+                <span id="liveStatus" class="badge rounded-pill bg-success px-3 py-2">🟢 LIVE</span>
+                <span id="refreshTime" class="badge rounded-pill bg-light text-dark border px-3 py-2 ms-2">
+                    Refresh in 20s
+                </span>
             </div>
         </div>
 
@@ -127,7 +139,7 @@
                     <th>Message Detail</th>
                 </tr>
             </thead>
-            <tbody id="logBody">
+            <tbody>
                 @foreach (var log in Model)
                 {
                     <tr>
@@ -147,7 +159,38 @@
 
 @section scripts {
     <script>
+        var refreshInterval = 10;
+        var counter = refreshInterval;
 
+        $("#liveStatus").addClass("live-blink");
+
+        setInterval(function () {
+
+            counter--;
+
+            $("#refreshTime").text("Refresh in " + counter + "s");
+
+            if (counter == 0) {
+
+                $("#refreshTime").text("Refreshing...");
+
+                var search = $("#localSearch").val();
+
+                if (search.length > 0) {
+
+                    location.href = '@Url.Action("Index","Log")?findText=' +
+                        encodeURIComponent(search);
+
+                }
+                else {
+
+                    location.href = '@Url.Action("Index","Log")';
+
+                }
+
+            }
+
+        },1000);
         // Client-side targeted filter with fallback to full row scan
         document.getElementById('localSearch').addEventListener('keyup', function () {
             const val = this.value.toUpperCase();
@@ -220,61 +263,5 @@
             var a = document.createElement("a");
             a.href = url; a.download = "BancsLogs.csv"; a.click();
         }
-    
-
-// ===================== AUTO REFRESH =====================
-
-function htmlEncode(value) {
-    return $('<div/>').text(value).html();
-}
-
-function copyMessage(id) {
-    var text = document.getElementById(id).innerText;
-    navigator.clipboard.writeText(text);
-}
-
-function refreshLogs() {
-
-    var search = $("#localSearch").val();
-
-    $.ajax({
-        url: '@Url.Action("RefreshLogs","Log")',
-        type: 'GET',
-        cache: false,
-        data: { findText: search },
-
-        success: function (logs) {
-
-            var html = "";
-
-            $.each(logs, function (i, log) {
-
-                var id = "msg_" + i;
-
-                html += "<tr>";
-                html += "<td><span class='teller-badge'>" + (log.TellerId || "") + "</span></td>";
-                html += "<td><span class='fw-bold'>" + (log.Level || "") + "</span></td>";
-                html += "<td>";
-                html += "<button onclick=\"copyMessage('" + id + "')\" class='btn-copy'>📋 Copy</button>";
-                html += "<div id='" + id + "' class='msg-display'>" + htmlEncode(log.Message || "") + "</div>";
-                html += "</td>";
-                html += "</tr>";
-            });
-
-            $("#logBody").html(html);
-        },
-        error: function (xhr) {
-            console.log(xhr);
-        }
-    });
-}
-
-setInterval(function () {
-    refreshLogs();
-}, 10000);
-
-// =================== END AUTO REFRESH ===================
-
-
-</script>
+    </script>
 }
