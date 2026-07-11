@@ -97,13 +97,19 @@
         border-radius: 2px;
         font-weight: bold;
     }
-    .live-blink {animation: blink 1s infinite;}
-    @@keyframes blink {
-        0% {opacity: 1;}
-        50% {opacity: 0.3;}
-        100% {opacity: 1;}
+
+    .live-status {
+        background: #28a745;
+        color: #fff;
+        font-weight: 600;
     }
 
+    .refresh-status {
+        background: #f8f9fa;
+        color: #333;
+        border: 1px solid #ddd;
+        font-weight: 600;
+    }
 </style>
 
 <div class="container-fluid p-0">
@@ -120,10 +126,14 @@
                     <button type="button" onclick="location.href='@Url.Action("Index", "Log")'" class="btn btn-light border rounded-pill ms-1">Clear</button>
                 </form>
                 <button onclick="exportToCSV()" class="btn btn-export shadow-sm">📥 CSV</button>
-                <span id="liveStatus" class="badge rounded-pill bg-success px-3 py-2">🟢 LIVE</span>
-                <span id="refreshTime" class="badge rounded-pill bg-light text-dark border px-3 py-2 ms-2">
-                    Refresh in 20s
-                </span>
+                <span id="liveStatus" class="badge rounded-pill live-status px-3 py-2">🟢 LIVE</span>
+                <span id="refreshTime" class="badge rounded-pill refresh-status px-3 py-2 ms-2">Refresh in 10s</span>
+                <span id="lastRefresh" class="badge rounded-pill bg-info text-dark px-3 py-2 ms-2">Last Updated : --</span>
+                <div class="form-check form-switch d-inline-block ms-2">
+                    <input class="form-check-input" type="checkbox" id="autoRefresh" checked>
+                    <label class="form-check-label" for="autoRefresh">Auto</label>
+                </div>
+                <button type="button" class="btn btn-light border rounded-pill ms-2" onclick="location.reload()">🔄 Refresh</button>
             </div>
         </div>
 
@@ -162,9 +172,16 @@
         var refreshInterval = 10;
         var counter = refreshInterval;
 
-        $("#liveStatus").addClass("live-blink");
+        function updateLastRefresh(){
+            $("#lastRefresh").text("Last Updated : " + new Date().toLocaleTimeString());
+        }
+
+        updateLastRefresh();
 
         setInterval(function () {
+
+            if(!$("#autoRefresh").is(":checked"))
+                return;
 
             counter--;
 
@@ -184,7 +201,9 @@
                 }
                 else {
 
-                    location.href = '@Url.Action("Index","Log")';
+                    updateLastRefresh();
+                    localStorage.setItem("scrollPos", $(window).scrollTop());
+                    location.href = '@Url.Action("Index","Log")';
 
                 }
 
@@ -237,13 +256,22 @@
             });
         });
 
+
+        $(function(){
+            var pos = localStorage.getItem("scrollPos");
+            if(pos){
+                $(window).scrollTop(parseInt(pos));
+            }
+        });
+
         // Copy to clipboard
         function copyText(id) {
             var text = document.getElementById(id).innerText;
             var ta = document.createElement("textarea");
             ta.value = text; document.body.appendChild(ta); ta.select();
             document.execCommand('copy'); document.body.removeChild(ta);
-            alert("Copied!");
+            navigator.clipboard.writeText(text);
+            console.log("Copied");
         }
 
         // CSV Export
