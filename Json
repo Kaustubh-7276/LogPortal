@@ -1,0 +1,10 @@
+[
+    {
+        "Level": "Information",
+        "TimeCreated": "/Date(1783678874524)/",
+        "Source": "CFNSTCPSocket",
+        "EventId": 0,
+        "Message": "Teller(2207003 - 10-07-2026 15:51:14:524) TX : 0040HSK5000000042340000220700320260710155114",
+        "TellerId": "2207003"
+    }
+]
