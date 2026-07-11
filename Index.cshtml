@@ -1,0 +1,280 @@
+@model IEnumerable<BancsEventsLogger.Models.LogEntry>
+@{ ViewBag.Title = "Service Logs"; }
+
+<style>
+    :root {
+        --yono-blue: #1c3a94;
+        --yono-grad: linear-gradient(135deg, #1c3a94 0%, #6c2a8d 100%);
+    }
+
+    .portal-card {
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        padding: 15px;
+        width: 100%;
+        border: 1px solid #e0e0e0;
+    }
+
+    .btn-yono {
+        background: var(--yono-grad);
+        color: white !important;
+        border: none;
+        border-radius: 20px;
+        padding: 6px 20px;
+        font-weight: 500;
+    }
+
+    .btn-export {
+        background: #e9f7ef;
+        border: 1px solid #28a745;
+        color: #28a745;
+        border-radius: 20px;
+        padding: 6px 20px;
+    }
+
+    /* STICKY HEADER FIX: Preventing Overlap */
+    #logTable {
+        table-layout: fixed;
+        width: 100%;
+        border-collapse: separate;
+        border-spacing: 0;
+    }
+
+        #logTable thead th {
+            position: sticky;
+            top: 0;
+            background: #ffffff !important; /* Solid white background */
+            z-index: 100;
+            border-bottom: 2px solid var(--yono-blue);
+            padding: 12px;
+            font-size: 0.85rem;
+            box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1); /* Subtle shadow under header */
+        }
+
+        #logTable td {
+            vertical-align: top;
+            border-bottom: 1px solid #eee;
+            padding: 10px;
+            background: #fff;
+        }
+
+    .btn-copy {
+        font-size: 0.7rem;
+        padding: 2px 8px;
+        border-radius: 8px;
+        background: #eef2ff;
+        border: 1px solid var(--yono-blue);
+        color: var(--yono-blue);
+        float: right;
+        cursor: pointer;
+    }
+
+    .msg-display {
+        white-space: pre-wrap;
+        word-break: break-all;
+        font-family: 'Consolas', monospace;
+        font-size: 0.8rem;
+        background: #fdfdfd;
+        padding: 10px;
+        border-radius: 4px;
+        border: 1px solid #f0f0f0;
+        margin-top: 35px;
+    }
+
+    .teller-badge {
+        color: var(--yono-blue);
+        font-weight: bold;
+        background: #eef2ff;
+        padding: 2px 6px;
+        border-radius: 4px;
+    }
+    mark.highlight {
+        background-color: #ffeb3b; /* Bright Yellow */
+        color: #000;
+        padding: 0;
+        border-radius: 2px;
+        font-weight: bold;
+    }
+</style>
+
+<div class="container-fluid p-0">
+    <div class="portal-card">
+        <div class="row mb-3 align-items-center">
+            <div class="col-md-5">
+                <h4 class="m-0" style="color: var(--yono-blue); font-weight: 700;">DEVELOPMENT REGION LIVE TX/RX LOGS</h4>
+                <small class="text-muted">@(string.IsNullOrEmpty(Request.QueryString["findText"]) ? "Last 500 entries loaded" : "Full scan results")</small>
+            </div>
+            <div class="col-md-7 text-end">
+                <form method="get" class="d-inline-flex me-2">
+                    <input type="text" name="findText" id="localSearch" class="form-control rounded-pill me-1" placeholder="Search..." value="@Request.QueryString["findText"]" style="width:180px;">
+                    <button type="submit" class="btn btn-yono shadow-sm">Find</button>
+                    <button type="button" onclick="location.href='@Url.Action("Index", "Log")'" class="btn btn-light border rounded-pill ms-1">Clear</button>
+                </form>
+                <button onclick="exportToCSV()" class="btn btn-export shadow-sm">📥 CSV</button>
+            </div>
+        </div>
+
+        @if (ViewBag.Error != null)
+        {<div class="alert alert-danger">@ViewBag.Error</div>}
+
+        <table class="table table-hover" id="logTable">
+            <thead>
+                <tr>
+                    <th style="width:10%;">Teller ID</th>
+                    <th style="width: 10%;">Level</th>
+                    @*<th style="width: 160px;">Timestamp</th>*@
+                    <th>Message Detail</th>
+                </tr>
+            </thead>
+            <tbody id="logBody">
+                @foreach (var log in Model)
+                {
+                    <tr>
+                        <td><span class="teller-badge">@log.TellerId</span></td>
+                        <td><span class="fw-bold">@log.Level</span></td>
+                        @*<td style="font-size: 0.85rem; color: #555;">@log.TimeCreated</td>*@
+                        <td>
+                            <button onclick="copyText('msg-@log.GetHashCode()')" class="btn-copy">📋 Copy</button>
+                            <div id="msg-@log.GetHashCode()" class="msg-display">@log.Message</div>
+                        </td>
+                    </tr>
+                }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section scripts {
+    <script>
+
+        // Client-side targeted filter with fallback to full row scan
+        document.getElementById('localSearch').addEventListener('keyup', function () {
+            const val = this.value.toUpperCase();
+            const rows = document.querySelectorAll("#logTable tbody tr");
+
+            rows.forEach(r => {
+                const tellerCell = r.cells[0];
+                const msgDisplay = r.cells[2].querySelector('.msg-display');
+
+                // Store original text if not already stored (to prevent corrupting HTML on multiple keypresses)
+                if (!msgDisplay.dataset.original) {
+                    msgDisplay.dataset.original = msgDisplay.innerHTML;
+                }
+
+                const tellerText = tellerCell.innerText.toUpperCase();
+                const originalMsgHtml = msgDisplay.dataset.original;
+                const msgTextOnly = msgDisplay.innerText; // Plain text for searching
+
+                let showRow = false;
+
+                // 1. Check Teller ID
+                if (tellerText.indexOf(val) > -1) {
+                    showRow = true;
+                    msgDisplay.innerHTML = originalMsgHtml; // Reset highlight if matching by Teller
+                }
+                // 2. Fallback: Check Message
+                else if (msgTextOnly.toUpperCase().indexOf(val) > -1) {
+                    showRow = true;
+                    if (val.length > 0) {
+                        // Highlight logic
+                        const regex = new RegExp(`(${val})`, "gi");
+                        msgDisplay.innerHTML = originalMsgHtml.replace(regex, '<mark class="highlight">$1</mark>');
+                    } else {
+                        msgDisplay.innerHTML = originalMsgHtml;
+                    }
+                }
+                else {
+                    showRow = false;
+                    msgDisplay.innerHTML = originalMsgHtml;
+                }
+
+                r.style.display = showRow ? "" : "none";
+                if (val === "") msgDisplay.innerHTML = msgDisplay.dataset.original;
+            });
+        });
+
+        // Copy to clipboard
+        function copyText(id) {
+            var text = document.getElementById(id).innerText;
+            var ta = document.createElement("textarea");
+            ta.value = text; document.body.appendChild(ta); ta.select();
+            document.execCommand('copy'); document.body.removeChild(ta);
+            alert("Copied!");
+        }
+
+        // CSV Export
+        function exportToCSV() {
+            var csv = [];
+            var rows = document.querySelectorAll("#logTable tr");
+            for (var i = 0; i < rows.length; i++) {
+                var row = [], cols = rows[i].querySelectorAll("td, th");
+                for (var j = 0; j < cols.length; j++) {
+                    var data = cols[j].innerText.replace(/📋 Copy/g, "").trim().replace(/"/g, '""');
+                    row.push('"' + data + '"');
+                }
+                csv.push(row.join(","));
+            }
+            var blob = new Blob(["\ufeff" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
+            var url = URL.createObjectURL(blob);
+            var a = document.createElement("a");
+            a.href = url; a.download = "BancsLogs.csv"; a.click();
+        }
+    
+
+// ===================== AUTO REFRESH =====================
+
+function htmlEncode(value) {
+    return $('<div/>').text(value).html();
+}
+
+function copyMessage(id) {
+    var text = document.getElementById(id).innerText;
+    navigator.clipboard.writeText(text);
+}
+
+function refreshLogs() {
+
+    var search = $("#localSearch").val();
+
+    $.ajax({
+        url: '@Url.Action("RefreshLogs","Log")',
+        type: 'GET',
+        cache: false,
+        data: { findText: search },
+
+        success: function (logs) {
+
+            var html = "";
+
+            $.each(logs, function (i, log) {
+
+                var id = "msg_" + i;
+
+                html += "<tr>";
+                html += "<td><span class='teller-badge'>" + (log.TellerId || "") + "</span></td>";
+                html += "<td><span class='fw-bold'>" + (log.Level || "") + "</span></td>";
+                html += "<td>";
+                html += "<button onclick=\"copyMessage('" + id + "')\" class='btn-copy'>📋 Copy</button>";
+                html += "<div id='" + id + "' class='msg-display'>" + htmlEncode(log.Message || "") + "</div>";
+                html += "</td>";
+                html += "</tr>";
+            });
+
+            $("#logBody").html(html);
+        },
+        error: function (xhr) {
+            console.log(xhr);
+        }
+    });
+}
+
+setInterval(function () {
+    refreshLogs();
+}, 10000);
+
+// =================== END AUTO REFRESH ===================
+
+
+</script>
+}
