@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>@ViewBag.Title - Bancslink Event Tracer</title>
+    @Styles.Render("~/Content/css")
+    <style>
+        :root {
+            --yono-blue: #1c3a94;
+            --yono-purple: #6c2a8d;
+            --yono-grad: linear-gradient(135deg, #1c3a94 0%, #6c2a8d 100%);
+        }
+
+        /* Prevent body from scrolling; use flex for fixed header/footer */
+        html, body {
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+
+        body {
+            display: flex;
+            flex-direction: column;
+            background-color: #f4f7f6;
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+        }
+
+        .navbar-yono {
+            background: var(--yono-grad);
+            border-bottom: 4px solid #ffcc00;
+            flex-shrink: 0;
+            z-index: 1050;
+        }
+
+        /* Scrollable area between header and footer */
+        .main-content-scrollable {
+            flex: 1;
+            overflow-y: auto;
+            padding: 15px;
+            width: 100%;
+        }
+
+        .footer-bank {
+            background: #fff;
+            border-top: 1px solid #ddd;
+            padding: 15px 0;
+            flex-shrink: 0;
+            color: #555;
+            font-size: 0.85rem;
+        }
+
+        .navbar-brand {
+            font-weight: 700;
+        }
+
+        /* --- TILE STYLES --- */
+        .tile-container {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+        }
+
+        .nav-tile {
+            display: flex;
+            align-items: center;
+            background: #fff;
+            padding: 15px 20px;
+            border-radius: 10px;
+            border-left: 5px solid var(--yono-blue);
+            text-decoration: none !important;
+            transition: all 0.3s ease;
+            color: #333;
+            min-width: 320px; /* Increased width to accommodate longer text */
+            box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        }
+
+            .nav-tile:hover {
+                transform: translateY(-3px);
+                box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+                border-left-color: var(--yono-purple);
+            }
+
+        .tile-icon-box {
+            font-size: 1.5rem;
+            margin-right: 15px;
+            color: var(--yono-blue);
+            background: #f0f2f8;
+            width: 45px;
+            height: 45px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 8px;
+            flex-shrink: 0;
+        }
+
+        .tile-title {
+            display: block;
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--yono-blue);
+            margin: 0;
+        }
+
+        .tile-subtitle {
+            display: block;
+            color: #777;
+            font-size: 0.75rem;
+            margin-top: 2px;
+            line-height: 1.2;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-sm navbar-dark navbar-yono shadow">
+        <div class="container-fluid">
+            <a class="navbar-brand fw-bold" href="#">BANCSLink | Event Logs-Portal | Maker-Checker Update Portal </a>
+            <div class="ms-auto">
+                <button onclick="location.reload()" class="btn btn-sm btn-light rounded-pill px-3 fw-bold" style="color: var(--yono-blue);">↻ Refresh Logs</button>
+            </div>
+        </div>
+    </nav>
+
+    <div class="main-content-scrollable">
+        <div class="container-fluid">
+            <!-- Dashboard Tiles -->
+            <div class="tile-container">
+                <!-- Log View Tile -->
+                <a href="@Url.Action("Index", "Log")" class="nav-tile">
+                    <div class="tile-icon-box">
+                        <span class="glyphicon glyphicon-list-alt"></span>
+                    </div>
+                    <div>
+                        <span class="tile-title">Development Region Logs</span>
+                        <span class="tile-subtitle">Fetch TX/RX logs for DEV Regions</span>
+                    </div>
+                </a>
+
+                <!-- Maker-Checker Tile -->
+                <a href="@Url.Action("Index", "MakerChecker")" class="nav-tile" style="border-left-color: var(--yono-purple);">
+                    <div class="tile-icon-box" style="color: var(--yono-purple);">
+                        <span class="glyphicon glyphicon-check"></span>
+                    </div>
+                    <div>
+                        <span class="tile-title">Maker-Checker Updates</span>
+                        <span class="tile-subtitle">To update transaction-wise checker authorization</span>
+                    </div>
+                </a>
+
+                <a href="@Url.Action("Index", "RemoteLog")" class="nav-tile">
+                    <div class="tile-icon-box">
+                        <span class="glyphicon glyphicon-list-alt"></span>
+                    </div>
+                    <div>
+                        <span class="tile-title">SIT V3 Region Logs</span>
+                        <span class="tile-subtitle">Fetch TX/RX logs for V3 Regions</span>
+                    </div>
+                </a>
+
+                <a href="@Url.Action("V4_Region", "RemoteLog")" class="nav-tile">
+                    <div class="tile-icon-box">
+                        <span class="glyphicon glyphicon-list-alt"></span>
+                    </div>
+                    <div>
+                        <span class="tile-title">SIT V4 Region Logs</span>
+                        <span class="tile-subtitle">Fetch TX/RX logs for V4 Regions</span>
+                    </div>
+                </a>
+                <a href="@Url.Action("WD_Region", "RemoteLog")" class="nav-tile">
+                    <div class="tile-icon-box">
+                        <span class="glyphicon glyphicon-list-alt"></span>
+                    </div>
+                    <div>
+                        <span class="tile-title">SIT WD Region Logs</span>
+                        <span class="tile-subtitle">Fetch TX/RX logs for WD Regions</span>
+                    </div>
+                </a>
+
+            </div>
+
+            <!-- Page Content -->
+            @RenderBody()
+        </div>
+    </div>
+
+    <footer class="footer-bank">
+        <div class="container-fluid text-center">
+            <div class="mb-1">
+                <strong>TCS BANCS™ Event Viewer Collector</strong> | Internal Security Infrastructure
+            </div>
+            <div class="text-muted small">
+                &copy; @DateTime.Now.Year. All Rights Reserved. Trademarks of <strong>TATA Consultancy Services Limited</strong>. | Site is developed and maintained by <strong>CBDEV Front-End Team</strong>.
+            </div>
+            <div class="mt-2 small text-uppercase" style="letter-spacing:1px; color:#999; font-size: 0.7rem;">
+                Strictly for Authorized Bank Personnel Only
+            </div>
+        </div>
+    </footer>
+    <script src="~/Scripts/jquery-3.6.0.min.js"></script>
+    @Scripts.Render("~/bundles/jquery")
+    @Scripts.Render("~/bundles/bootstrap")
+    @RenderSection("scripts", required: false)
+</body>
+</html>
