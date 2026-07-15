@@ -1,0 +1,192 @@
+var refreshInterval = 20;
+var counter = refreshInterval;
+
+var refreshTimer = null;
+var isReloading = false;
+
+
+$(document).ready(function () {
+
+    const pageConfig = document.getElementById("pageConfig");
+
+    if (!pageConfig)
+        return;
+
+    const controllerID = pageConfig.dataset.controller;
+    const viewID = pageConfig.dataset.view;
+
+    if (!controllerID || !viewID)
+        return;
+
+    updateLastRefresh();
+
+    startAutoRefresh(controllerID, viewID);
+
+    bindSearchClear(controllerID, viewID);
+
+});
+
+function startAutoRefresh(controllerID, viewID) {
+
+    if (refreshTimer != null)
+        clearInterval(refreshTimer);
+
+    counter = refreshInterval;
+    isReloading = false;
+
+    refreshTimer = setInterval(function () {
+
+        setAutoRefresh(controllerID, viewID);
+
+    }, 1000);
+
+}
+
+function setAutoRefresh(controllerID, viewID) {
+
+    if (!$("#autoRefresh").length)
+        return;
+
+    if (!$("#autoRefresh").is(":checked")) {
+
+        counter = refreshInterval;
+
+        $("#refreshTime").text("Auto Refresh Off");
+
+        return;
+
+    }
+
+    counter--;
+
+    $("#refreshTime").text("Refresh in " + counter + "s");
+
+    if (counter > 0)
+        return;
+
+    if (isReloading)
+        return;
+
+    isReloading = true;
+
+    clearInterval(refreshTimer);
+
+    var scrollObj = $(".table-scroll");
+
+    if (scrollObj.length > 0) {
+
+        localStorage.setItem(
+            "scrollPos",
+            scrollObj.scrollTop()
+        );
+
+    }
+
+    var search = "";
+
+    if ($("#localSearch").length)
+        search = $("#localSearch").val();
+
+    var url = "/" + controllerID + "/" + viewID;
+
+    if (search && search.trim() !== "")
+        url += "?findText=" + encodeURIComponent(search);
+
+    updateLastRefresh();
+
+    window.location.replace(url);
+
+}
+
+function bindSearchClear(controllerID, viewID) {
+
+    if (!$("#localSearch").length)
+        return;
+
+    $("#localSearch").on("input", function () {
+
+        if ($(this).val().trim() === "") {
+
+            if (refreshTimer != null)
+                clearInterval(refreshTimer);
+
+            counter = refreshInterval;
+
+            var url = "/" + controllerID + "/" + viewID;
+
+            window.location.replace(url);
+
+        }
+
+    });
+
+}
+
+function updateLastRefresh() {
+
+    if ($("#lastRefresh").length) {
+
+        $("#lastRefresh").text(
+            "Last Updated : " +
+            new Date().toLocaleTimeString()
+        );
+
+    }
+
+}
+
+$(function () {
+
+    var scrollPos = localStorage.getItem("scrollPos");
+
+    if (scrollPos && $(".table-scroll").length) {
+
+        $(".table-scroll").scrollTop(scrollPos);
+
+    }
+
+});   
+
+
+$(function () {
+    var pos = localStorage.getItem("scrollPos");
+    if (pos) {
+        $(window).scrollTop(parseInt(pos));
+    }
+});
+
+function copyText(id) {
+    var text = document.getElementById(id).innerText;
+    var ta = document.createElement("textarea");
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    navigator.clipboard.writeText(text);
+    showCopyToast();
+}
+function showCopyToast() {
+    var toast = document.getElementById("copyToast");
+    toast.style.display = "flex";
+    setTimeout(function () {
+        toast.style.display = "none";
+    }, 1000);
+}
+// CSV Export
+function exportToCSV() {
+    var csv = [];
+    var rows = document.querySelectorAll("#logTable tr");
+    for (var i = 0; i < rows.length; i++) {
+        var row = [], cols = rows[i].querySelectorAll("td, th");
+        for (var j = 0; j < cols.length; j++) {
+            var data = cols[j].innerText.replace(/📋 Copy/g, "").trim().replace(/"/g, '""');
+            row.push('"' + data + '"');
+        }
+        csv.push(row.join(","));
+    }
+    var blob = new Blob(["\ufeff" + csv.join("\n")], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement("a");
+    a.href = url; a.download = "BancsLogs.csv"; a.click();
+}
