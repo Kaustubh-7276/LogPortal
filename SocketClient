@@ -1,0 +1,285 @@
+@{ ViewBag.Title = "Socket Client Portal"; Layout = "~/Views/Shared/_Layout.cshtml"; }
+
+<div class="yono-socket-wrapper">
+
+    <!-- Yono Style Header -->
+    <div class="yono-header text-white text-center mb-4">
+        <div class="container">
+            <!-- Replaced Icon with Unicode -->
+            <h1 class="display-6 fw-bold mb-1"><span style="font-size:1.2em; vertical-align:middle;">&#128279;</span> Socket Client Portal</h1>
+            <p class="opacity-75 mb-0" style="font-size: 0.9rem;">Secure Banking Message Gateway</p>
+        </div>
+    </div>
+
+    <div class="container-fluid px-4">
+
+        <!-- Connection Status Bar -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm yono-status-card">
+                    <div class="card-body py-2 d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <span class="status-dot bg-secondary me-2"></span>
+                            <span class="fw-semibold text-muted" id="connectionStatus" style="font-size: 0.85rem;">Disconnected</span>
+                        </div>
+                        <small class="text-muted" id="lastActivity" style="font-size: 0.75rem;">Last activity: --</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuration Card -->
+        <div class="card yono-card mb-4 border-0 shadow-sm">
+            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
+                <h5 class="fw-bold" style="color: var(--yono-blue);"><span style="margin-right:8px;">&#9881;</span>Connection Settings</h5>
+            </div>
+            <div class="card-body px-4 pb-4">
+                <div class="row g-3 align-items-end">
+                    <div class="col-md-7">
+                        <label class="form-label fw-bold small text-uppercase" style="color: var(--yono-purple); letter-spacing: 0.5px;">Server IP Address</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0" style="color: var(--yono-blue);">&#128421;</span>
+                            <input id="txtServerIP" class="form-control border-start-0 ps-0" placeholder="e.g. 192.168.1.10" />
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <label class="form-label fw-bold small text-uppercase" style="color: var(--yono-purple); letter-spacing: 0.5px;">Port</label>
+                        <div class="input-group">
+                            <span class="input-group-text bg-light border-end-0" style="color: var(--yono-blue);">&#128268;</span>
+                            <input id="txtPort" class="form-control border-start-0 ps-0" placeholder="8080" />
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <button class="btn btn-outline-primary w-100 rounded-pill" type="button" disabled style="border-color: var(--yono-blue); color: var(--yono-blue);">Ready</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <!-- Request Section -->
+            <div class="col-lg-6 mb-4">
+                <div class="card yono-card h-100 border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0" style="color: #40404c;"><span style="color: var(--yono-blue); margin-right:8px;">&#8593;</span>Request Payload</h5>
+                        <div class="btn-group">
+                            <!-- Applied .btn-yono class -->
+                            <button id="btnSend" class="btn btn-yono shadow-sm">
+                                <span style="margin-right:4px;">&#10148;</span> Send
+                            </button>
+                            <button id="btnClearRequest" class="btn btn-light border rounded-pill px-3 text-muted">
+                                <span>&#128465;</span>
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body px-4">
+                        <textarea id="txtRequest" class="form-control font-monospace bg-light" rows="12" placeholder="Enter hex or raw message here..."></textarea>
+                        <div class="form-text text-end mt-2" style="color: var(--yono-purple);"><span id="charCount">0</span> chars</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Response Section -->
+            <div class="col-lg-6 mb-4">
+                <div class="card yono-card h-100 border-0 shadow-sm">
+                    <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
+                        <h5 class="fw-bold mb-0" style="color: #40404c;"><span style="color: var(--yono-purple); margin-right:8px;">&#8595;</span>Server Response</h5>
+                        <div class="btn-group">
+                            <!-- Using btn-yono for primary actions, standard outline for others with Unicode -->
+                            <button id="btnCopy" class="btn btn-yono btn-sm" style="padding: 4px 12px; font-size:0.85rem;" title="Copy"><span>&#128203;</span></button>
+                            <button id="btnSave" class="btn btn-yono btn-sm" style="padding: 4px 12px; font-size:0.85rem;" title="Save"><span>&#128190;</span></button>
+                            <button id="btnExport" class="btn btn-yono btn-sm" style="padding: 4px 12px; font-size:0.85rem;" title="Export"><span>&#128196;</span></button>
+                            <button id="btnParse" class="btn btn-yono btn-sm" style="padding: 4px 12px; font-size:0.85rem;" title="Parse"><span>&#128200;</span></button>
+                        </div>
+                    </div>
+                    <div class="card-body px-4">
+                        <textarea id="txtResponse" class="form-control font-monospace bg-light" rows="12" readonly placeholder="Waiting for response..."></textarea>
+                        <div class="alert border-0 mt-2 mb-0 py-2 small" style="background-color: #f8f9fa; color: #6c757d;">
+                            <span style="margin-right:4px;">&#9432;</span> <span id="responseMeta">No data received</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Parsed Data Section -->
+        <div class="card yono-card mb-5 border-0 shadow-sm">
+            <div class="card-header bg-white border-0 py-3 px-4">
+                <h5 class="fw-bold mb-0" style="color: #40404c;"><span style="color: var(--yono-blue); margin-right:8px;">&#128202;</span>Parsed Message Data</h5>
+            </div>
+            <div class="card-body px-0 pb-0">
+                <div class="table-responsive">
+                    <table id="tblParsed" class="table table-hover align-middle mb-0">
+                        <thead class="text-uppercase small fw-bold" style="background-color: #f0f4f8; color: var(--yono-blue);">
+                            <tr>
+                                <th class="ps-4 py-3">Msg Type</th>
+                                <th class="py-3">Out Type</th>
+                                <th class="py-3">Branch</th>
+                                <th class="py-3">Teller</th>
+                                <th class="py-3">Journal No</th>
+                                <th class="py-3">Message Content</th>
+                            </tr>
+                        </thead>
+                        <tbody class="small">
+                            <tr>
+                                <td colspan="6" class="text-center py-5 text-muted">
+                                    <span style="font-size:3rem; color: var(--yono-pink); display:block; margin-bottom:10px;">&#128229;</span>
+                                    No parsed data available. Send a message or click "Parse".
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    :root {
+        /* Your Provided Variables */
+        --yono-blue: #1c3a94;
+        --yono-purple: #6c2a8d;
+        --yono-grad: linear-gradient(135deg, #1c3a94 0%, #6c2a8d 100%);
+
+        /* Derived Variables for UI consistency */
+        --yono-pink: #d4a0bc;
+        --yono-dark: #40404c;
+        --yono-light: #f5f7fb;
+
+        --card-radius: 20px;
+        --input-radius: 12px;
+    }
+
+    body {
+        background-color: var(--yono-light);
+        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .yono-socket-wrapper { padding-bottom: 50px; }
+
+    /* Header */
+    .yono-header {
+        background: var(--yono-grad);
+        padding: 35px 20px;
+        border-radius: 0 0 35px 35px;
+        box-shadow: 0 10px 25px rgba(28, 58, 148, 0.3);
+        margin-bottom: 30px;
+        position: relative;
+        overflow: hidden;
+    }
+    /*.yono-header::after {
+            content: '';
+            position: absolute;
+            top: -20%;
+            right: -5%;
+            width: auto;
+            height: auto;
+            background: rgba(255,255,255,0.15);
+            border-radius: 50%;
+        }*/ 
+
+    /* Cards */
+    .yono-card {
+        border-radius: var(--card-radius);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        overflow: hidden; background: #fff;
+    }
+    .yono-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 15px 35px rgba(64, 64, 76, 0.1) !important;
+    }
+
+    /* Inputs */
+    .form-control {
+        border-radius: var(--input-radius);
+        border: 1px solid #e0e0e0;
+        padding: 12px 15px;
+        font-size: 0.95rem;
+        transition: all 0.2s;
+        color: var(--yono-dark);
+    }
+    .form-control:focus {
+        box-shadow: 0 0 0 4px rgba(28, 58, 148, 0.15);
+        border-color: var(--yono-blue);
+    }
+    .input-group-text {
+        background-color: #f8f9fa;
+        border-radius: var(--input-radius) 0 0 var(--input-radius);
+        border: 1px solid #e0e0e0;
+        color: var(--yono-blue);
+        font-weight: bold;
+    }
+
+    /* Status Bar */
+    .yono-status-card {
+        border-radius: 50px; background: #fff; border: 1px solid #eee !important;
+    }
+    .status-dot {
+        width: 10px; height: 10px; border-radius: 50%;
+        display: inline-block; box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
+    }
+    .status-dot.bg-success { background-color: #28a745; box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2); }
+    .status-dot.bg-secondary { background-color: #adb5bd; }
+    .status-dot.bg-danger { background-color: #dc3545; box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2); }
+
+    /* YOUR PROVIDED BUTTON CSS */
+    .btn-yono {
+        background: var(--yono-grad);
+        color: white !important;
+        border: none;
+        border-radius: 20px;
+        padding: 6px 20px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 10px rgba(108, 42, 141, 0.2);
+    }
+    .btn-yono:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 15px rgba(108, 42, 141, 0.3);
+        color: white !important;
+        opacity: 0.95;
+    }
+    .btn-yono:active {
+        transform: translateY(0);
+    }
+
+    /* Table & Text */
+    textarea.font-monospace {
+        font-family: 'Consolas', 'Monaco', monospace;
+        font-size: 0.85rem; line-height: 1.5; resize: none; color: #333;
+    }
+    #tblParsed thead th {
+        font-weight: 700; letter-spacing: 0.8px; border-bottom: 2px solid #e9ecef;
+    }
+    #tblParsed tbody tr:hover { background-color: #fcf4f8; }
+
+    @@keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    #tblParsed tbody tr { animation: fadeIn 0.3s ease-out; }
+</style>
+
+<script>
+    // UI Helper: Character Counter
+    document.getElementById('txtRequest').addEventListener('input', function (e) {
+        document.getElementById('charCount').textContent = e.target.value.length;
+    });
+
+    // UI Helper: Update Status
+    function updateStatus(state, message) {
+        const dot = document.querySelector('.status-dot');
+        const text = document.getElementById('connectionStatus');
+        const time = document.getElementById('lastActivity');
+
+        dot.className = 'status-dot me-2 ' + (state === 'connected' ? 'bg-success' : state === 'error' ? 'bg-danger' : 'bg-secondary');
+        text.textContent = state === 'connected' ? 'Connected' : state === 'error' ? 'Connection Failed' : 'Disconnected';
+        if (message) text.textContent += ` - ${message}`;
+
+        const now = new Date();
+        time.textContent = `Last activity: ${now.toLocaleTimeString()}`;
+    }
+    updateStatus('disconnected');
+</script>   
