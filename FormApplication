@@ -1,0 +1,381 @@
+using System;
+using System.Diagnostics;
+using System.Drawing;
+using System.IO;
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+using System.Windows.Forms;
+
+namespace DefaultNamespace
+{
+	public class SocketClient : Form
+	{
+		public class SocketPacket
+		{
+			public Socket thisSocket;
+
+			public byte[] dataBuffer = new byte[1024];
+		}
+
+		private Label label3;
+
+		private Label label2;
+
+		private Label label1;
+
+		private Button buttonDisconnect;
+
+		private TextBox textBoxIP;
+
+		private Label label5;
+
+		private Button buttonConnect;
+
+		private TextBox textBoxPort;
+
+		private RichTextBox richTextRxMessage;
+
+		private Label label4;
+
+		private TextBox textBoxConnectStatus;
+
+		private RichTextBox richTextTxMessage;
+
+		private Button buttonSendMessage;
+
+		private Button buttonClose;
+
+		private byte[] m_dataBuffer = new byte[10];
+
+		private IAsyncResult m_result;
+
+		public AsyncCallback m_pfnCallBack;
+
+		private Button btnClear;
+
+		private Label Time;
+
+		private Label TimeValue;
+
+		public Socket m_clientSocket;
+
+		public SocketClient()
+		{
+			this.InitializeComponent();
+			this.textBoxIP.set_Text(this.GetIP());
+		}
+
+		[STAThread]
+		public static void Main(string[] args)
+		{
+			Application.Run(new SocketClient());
+		}
+
+		private void InitializeComponent()
+		{
+			this.buttonClose = new Button();
+			this.buttonSendMessage = new Button();
+			this.richTextTxMessage = new RichTextBox();
+			this.textBoxConnectStatus = new TextBox();
+			this.label4 = new Label();
+			this.richTextRxMessage = new RichTextBox();
+			this.textBoxPort = new TextBox();
+			this.buttonConnect = new Button();
+			this.label5 = new Label();
+			this.textBoxIP = new TextBox();
+			this.buttonDisconnect = new Button();
+			this.label1 = new Label();
+			this.label2 = new Label();
+			this.label3 = new Label();
+			this.btnClear = new Button();
+			this.Time = new Label();
+			this.TimeValue = new Label();
+			base.SuspendLayout();
+			this.buttonClose.set_BackColor(Color.get_PaleGreen());
+			this.buttonClose.set_Location(new Point(440, 216));
+			this.buttonClose.set_Name("buttonClose");
+			this.buttonClose.set_Size(new Size(64, 24));
+			this.buttonClose.set_TabIndex(8);
+			this.buttonClose.set_Text("Close");
+			this.buttonClose.add_Click(new EventHandler(this.ButtonCloseClick));
+			this.buttonSendMessage.set_BackColor(Color.get_PaleGreen());
+			this.buttonSendMessage.set_Location(new Point(8, 184));
+			this.buttonSendMessage.set_Name("buttonSendMessage");
+			this.buttonSendMessage.set_Size(new Size(240, 24));
+			this.buttonSendMessage.set_TabIndex(6);
+			this.buttonSendMessage.set_Text("Send Message");
+			this.buttonSendMessage.add_Click(new EventHandler(this.ButtonSendMessageClick));
+			this.richTextTxMessage.set_Location(new Point(8, 80));
+			this.richTextTxMessage.set_Name("richTextTxMessage");
+			this.richTextTxMessage.set_Size(new Size(240, 96));
+			this.richTextTxMessage.set_TabIndex(5);
+			this.richTextTxMessage.set_Text("");
+			this.textBoxConnectStatus.set_BackColor(Color.get_CornflowerBlue());
+			this.textBoxConnectStatus.set_BorderStyle(0);
+			this.textBoxConnectStatus.set_ForeColor(SystemColors.get_HighlightText());
+			this.textBoxConnectStatus.set_Location(new Point(120, 224));
+			this.textBoxConnectStatus.set_Name("textBoxConnectStatus");
+			this.textBoxConnectStatus.set_ReadOnly(true);
+			this.textBoxConnectStatus.set_Size(new Size(128, 13));
+			this.textBoxConnectStatus.set_TabIndex(10);
+			this.textBoxConnectStatus.set_Text("Not Connected");
+			this.label4.set_Location(new Point(8, 64));
+			this.label4.set_Name("label4");
+			this.label4.set_Size(new Size(120, 16));
+			this.label4.set_TabIndex(9);
+			this.label4.set_Text("Message To Server");
+			this.richTextRxMessage.set_BackColor(SystemColors.get_InactiveCaptionText());
+			this.richTextRxMessage.set_Location(new Point(256, 80));
+			this.richTextRxMessage.set_Name("richTextRxMessage");
+			this.richTextRxMessage.set_ReadOnly(true);
+			this.richTextRxMessage.set_Size(new Size(248, 128));
+			this.richTextRxMessage.set_TabIndex(10);
+			this.richTextRxMessage.set_Text("");
+			this.textBoxPort.set_Location(new Point(112, 31));
+			this.textBoxPort.set_Name("textBoxPort");
+			this.textBoxPort.set_Size(new Size(48, 20));
+			this.textBoxPort.set_TabIndex(2);
+			this.textBoxPort.set_Text("101");
+			this.buttonConnect.set_BackColor(SystemColors.get_HotTrack());
+			this.buttonConnect.set_Font(new Font("Tahoma", 8.25f, 1, 3, 0));
+			this.buttonConnect.set_ForeColor(Color.get_Yellow());
+			this.buttonConnect.set_Location(new Point(320, 8));
+			this.buttonConnect.set_Name("buttonConnect");
+			this.buttonConnect.set_Size(new Size(80, 48));
+			this.buttonConnect.set_TabIndex(3);
+			this.buttonConnect.set_Text("Connect To Server");
+			this.buttonConnect.add_Click(new EventHandler(this.ButtonConnectClick));
+			this.label5.set_Location(new Point(0, 224));
+			this.label5.set_Name("label5");
+			this.label5.set_Size(new Size(104, 16));
+			this.label5.set_TabIndex(13);
+			this.label5.set_Text("Connection Status");
+			this.textBoxIP.set_Location(new Point(112, 8));
+			this.textBoxIP.set_Name("textBoxIP");
+			this.textBoxIP.set_Size(new Size(152, 20));
+			this.textBoxIP.set_TabIndex(1);
+			this.textBoxIP.set_Text("");
+			this.buttonDisconnect.set_BackColor(Color.get_Red());
+			this.buttonDisconnect.set_Font(new Font("Tahoma", 8.25f, 1, 3, 0));
+			this.buttonDisconnect.set_ForeColor(Color.get_Yellow());
+			this.buttonDisconnect.set_Location(new Point(424, 8));
+			this.buttonDisconnect.set_Name("buttonDisconnect");
+			this.buttonDisconnect.set_Size(new Size(80, 48));
+			this.buttonDisconnect.set_TabIndex(4);
+			this.buttonDisconnect.set_Text("Disconnect From Server");
+			this.buttonDisconnect.add_Click(new EventHandler(this.ButtonDisconnectClick));
+			this.label1.set_Location(new Point(8, 8));
+			this.label1.set_Name("label1");
+			this.label1.set_Size(new Size(96, 16));
+			this.label1.set_TabIndex(4);
+			this.label1.set_Text("Server IP Address");
+			this.label2.set_Location(new Point(8, 33));
+			this.label2.set_Name("label2");
+			this.label2.set_Size(new Size(64, 16));
+			this.label2.set_TabIndex(5);
+			this.label2.set_Text("Server Port");
+			this.label3.set_Location(new Point(256, 64));
+			this.label3.set_Name("label3");
+			this.label3.set_Size(new Size(192, 16));
+			this.label3.set_TabIndex(8);
+			this.label3.set_Text("Message From Server");
+			this.btnClear.set_BackColor(Color.get_PaleGreen());
+			this.btnClear.set_Location(new Point(376, 216));
+			this.btnClear.set_Name("btnClear");
+			this.btnClear.set_Size(new Size(64, 24));
+			this.btnClear.set_TabIndex(7);
+			this.btnClear.set_Text("Clear");
+			this.btnClear.add_Click(new EventHandler(this.btnClear_Click));
+			this.Time.set_Font(new Font("Microsoft Sans Serif", 10f, 0, 3, 0));
+			this.Time.set_Location(new Point(8, 256));
+			this.Time.set_Name("Time");
+			this.Time.set_Size(new Size(64, 23));
+			this.Time.set_TabIndex(17);
+			this.Time.set_Text("Time");
+			this.TimeValue.set_Font(new Font("Microsoft Sans Serif", 10f, 0, 3, 0));
+			this.TimeValue.set_Location(new Point(104, 256));
+			this.TimeValue.set_Name("TimeValue");
+			this.TimeValue.set_Size(new Size(392, 23));
+			this.TimeValue.set_TabIndex(18);
+			this.set_AutoScaleBaseSize(new Size(5, 13));
+			this.set_BackColor(Color.get_CornflowerBlue());
+			base.set_ClientSize(new Size(512, 285));
+			base.get_Controls().AddRange(new Control[]
+			{
+				this.TimeValue,
+				this.Time,
+				this.btnClear,
+				this.buttonDisconnect,
+				this.buttonSendMessage,
+				this.label5,
+				this.buttonClose,
+				this.textBoxConnectStatus,
+				this.label4,
+				this.label3,
+				this.buttonConnect,
+				this.textBoxPort,
+				this.label2,
+				this.label1,
+				this.textBoxIP,
+				this.richTextTxMessage,
+				this.richTextRxMessage
+			});
+			base.set_Name("SocketClient");
+			this.set_Text("Socket Client");
+			base.ResumeLayout(false);
+		}
+
+		private void ButtonCloseClick(object sender, EventArgs e)
+		{
+			if (this.m_clientSocket != null)
+			{
+				this.m_clientSocket.Close();
+				this.m_clientSocket = null;
+			}
+			base.Close();
+		}
+
+		private void ButtonConnectClick(object sender, EventArgs e)
+		{
+			if (this.textBoxIP.get_Text() == "" || this.textBoxPort.get_Text() == "")
+			{
+				MessageBox.Show("IP Address and Port Number are required to connect to the Server\n");
+			}
+			else
+			{
+				try
+				{
+					this.UpdateControls(false);
+					this.m_clientSocket = new Socket(2, 1, 6);
+					IPAddress iPAddress = IPAddress.Parse(this.textBoxIP.get_Text());
+					int num = (int)Convert.ToInt16(this.textBoxPort.get_Text());
+					IPEndPoint iPEndPoint = new IPEndPoint(iPAddress, num);
+					this.m_clientSocket.Connect(iPEndPoint);
+					if (this.m_clientSocket.get_Connected())
+					{
+						this.UpdateControls(true);
+						this.WaitForData();
+					}
+				}
+				catch (SocketException ex)
+				{
+					string text = "\nConnection failed, is the server running?\n" + ex.get_Message();
+					MessageBox.Show(text);
+					this.UpdateControls(false);
+				}
+			}
+		}
+
+		private void ButtonSendMessageClick(object sender, EventArgs e)
+		{
+			try
+			{
+				string text = this.richTextTxMessage.get_Text();
+				NetworkStream networkStream = new NetworkStream(this.m_clientSocket);
+				StreamWriter streamWriter = new StreamWriter(networkStream);
+				streamWriter.WriteLine(text);
+				this.TimeValue.set_Text(string.Concat(new string[]
+				{
+					DateTime.get_Now().get_Hour().ToString(),
+					" : ",
+					DateTime.get_Now().get_Minute().ToString(),
+					" : ",
+					DateTime.get_Now().get_Second().ToString(),
+					" : ",
+					DateTime.get_Now().get_Millisecond().ToString()
+				}));
+				streamWriter.Flush();
+			}
+			catch (SocketException ex)
+			{
+				MessageBox.Show(ex.get_Message());
+			}
+		}
+
+		public void WaitForData()
+		{
+			try
+			{
+				if (this.m_pfnCallBack == null)
+				{
+					this.m_pfnCallBack = new AsyncCallback(this.OnDataReceived);
+				}
+				SocketClient.SocketPacket socketPacket = new SocketClient.SocketPacket();
+				socketPacket.thisSocket = this.m_clientSocket;
+				this.m_result = this.m_clientSocket.BeginReceive(socketPacket.dataBuffer, 0, socketPacket.dataBuffer.Length, 0, this.m_pfnCallBack, socketPacket);
+			}
+			catch (SocketException ex)
+			{
+				MessageBox.Show(ex.get_Message());
+			}
+		}
+
+		public void OnDataReceived(IAsyncResult asyn)
+		{
+			try
+			{
+				SocketClient.SocketPacket socketPacket = (SocketClient.SocketPacket)asyn.get_AsyncState();
+				int num = socketPacket.thisSocket.EndReceive(asyn);
+				char[] array = new char[checked((uint)(unchecked(num + 1)))];
+				Decoder decoder = Encoding.get_UTF8().GetDecoder();
+				int chars = decoder.GetChars(socketPacket.dataBuffer, 0, num, array, 0);
+				string text = new string(array);
+				this.richTextRxMessage.set_Text(this.richTextRxMessage.get_Text() + text);
+				this.WaitForData();
+			}
+			catch (ObjectDisposedException)
+			{
+				Debugger.Log(0, "1", "\nOnDataReceived: Socket has been closed\n");
+			}
+			catch (SocketException ex)
+			{
+				MessageBox.Show(ex.get_Message());
+			}
+		}
+
+		private void UpdateControls(bool connected)
+		{
+			this.buttonConnect.set_Enabled(!connected);
+			this.buttonDisconnect.set_Enabled(connected);
+			string text = connected ? "Connected" : "Not Connected";
+			this.textBoxConnectStatus.set_Text(text);
+		}
+
+		private void ButtonDisconnectClick(object sender, EventArgs e)
+		{
+			if (this.m_clientSocket != null)
+			{
+				this.m_clientSocket.Close();
+				this.m_clientSocket = null;
+				this.UpdateControls(false);
+			}
+		}
+
+		private string GetIP()
+		{
+			string hostName = Dns.GetHostName();
+			IPHostEntry hostByName = Dns.GetHostByName(hostName);
+			string text = "";
+			IPAddress[] addressList = hostByName.get_AddressList();
+			int num = 0;
+			string result;
+			if (num >= addressList.Length)
+			{
+				result = text;
+			}
+			else
+			{
+				IPAddress iPAddress = addressList[num];
+				text = iPAddress.ToString();
+				result = text;
+			}
+			return result;
+		}
+
+		private void btnClear_Click(object sender, EventArgs e)
+		{
+			this.richTextRxMessage.Clear();
+		}
+	}
+}
