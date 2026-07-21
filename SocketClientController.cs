@@ -15,7 +15,7 @@ namespace BancsEventsLogger.Controllers
         private static StreamWriter _writer;
         private static NetworkStream _networkStream;
 
-        public ActionResult Index()
+        public ActionResult SocketClient()
         {
             return View();
         }
