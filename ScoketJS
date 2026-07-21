@@ -1,0 +1,571 @@
+
+var SocketClient = (function () {
+
+    var page = {
+
+        isConnected: false,
+
+        txCount: 0,
+
+        rxCount: 0
+
+    };
+
+
+    function init() {
+
+        registerEvents();
+
+        resetScreen();
+
+        checkConnection();
+
+        console.log("Socket Client Loaded");
+
+    }
+
+    function registerEvents() {
+
+        $("#btnConnect").click(connectServer);
+
+        $("#btnDisconnect").click(disconnectServer);
+
+        $("#btnSend").click(sendMessage);
+
+        $("#btnClear").click(clearScreen);
+
+    }
+
+    function connectServer() {
+
+        showLoading();
+
+        $.ajax({
+
+            url: "/SocketClient/Connect",
+
+            type: "POST",
+
+            dataType: "json",
+
+            data: {
+
+                HostAddress: $("#txtServer").val(),
+
+                HostPort: $("#txtPort").val()
+
+            },
+
+            success: function (result) {
+
+                hideLoading();
+
+                if (result.Success) {
+
+                    page.isConnected = true;
+
+                    updateStatus("Connected");
+
+                    $("#txtConnectionStatus").val(result.ConnectionStatus);
+
+                    $("#lblLastActivity").text(result.TimeStamp);
+
+                    showToast(result.SuccessMessage);
+
+                }
+                else {
+
+                    updateStatus("Disconnected");
+
+                    showToast(result.SuccessMessage);
+
+                }
+
+            },
+
+            error: function (xhr) {
+
+                hideLoading();
+
+                updateStatus("Disconnected");
+
+                alert(xhr.responseText);
+
+            }
+
+        });
+
+    }
+
+
+    function checkConnection() {
+
+        $.ajax({
+
+            url: "/SocketClient/GetConnectionStatus",
+
+            type: "GET",
+
+            success: function (result) {
+
+                if (result.ConnectionStatus === "Connected") {
+
+                    page.isConnected = true;
+
+                    updateStatus("Connected");
+
+                }
+                else {
+
+                    updateStatus("Disconnected");
+
+                }
+
+            }
+
+        });
+
+    }
+
+
+    function updateStatus(status) {
+
+        $("#lblStatus").text(status);
+
+        $("#txtConnectionStatus").val(status);
+
+        if (status === "Connected") {
+
+            $("#lblStatus")
+                .removeClass("text-danger")
+                .addClass("text-success");
+
+        }
+        else {
+
+            $("#lblStatus")
+                .removeClass("text-success")
+                .addClass("text-danger");
+
+        }
+
+    }
+
+    function resetScreen() {
+
+        page.txCount = 0;
+
+        page.rxCount = 0;
+
+        $("#lblTxCount").text("0");
+
+        $("#lblRxCount").text("0");
+
+        $("#txtResponse").val("");
+
+        $("#txtConnectionStatus").val("Disconnected");
+
+    }
+    function clearScreen() {
+
+        $("#txtRequest").val("");
+
+        $("#txtResponse").val("");
+
+        $("#tblHistory tbody").empty();
+
+        $("#tblLogs tbody").empty();
+
+        resetScreen();
+
+    }
+
+
+    function showLoading() {
+
+        $("#loadingPanel").show();
+
+    }
+
+    function hideLoading() {
+
+        $("#loadingPanel").hide();
+
+    }
+
+    function showToast(message) {
+
+        $("#copyToast span").text(message);
+
+        $("#copyToast")
+            .stop(true, true)
+            .fadeIn(300)
+            .delay(2000)
+            .fadeOut(400);
+
+    }
+
+
+    return {
+
+        init: init
+
+    };
+
+})();
+
+$(document).ready(function () {
+
+    SocketClient.init();
+
+});
+
+function sendMessage() {
+
+    if (!page.isConnected) {
+
+        showToast("Please connect to server first.");
+
+        return;
+    }
+
+    var message = $("#txtRequest").val();
+
+    if ($.trim(message) === "") {
+
+        showToast("Please enter request message.");
+
+        return;
+    }
+
+    showLoading();
+
+    $.ajax({
+
+        url: "/SocketClient/Send",
+
+        type: "POST",
+
+        dataType: "json",
+
+        data: {
+
+            HostMessage: message
+
+        },
+
+        success: function (result) {
+
+            hideLoading();
+
+            if (result.Success) {
+
+                page.txCount++;
+
+                page.rxCount++;
+
+                $("#lblTxCount").text(page.txCount);
+
+                $("#lblRxCount").text(page.rxCount);
+
+                $("#txtResponse").val(result.ResponseData);
+
+                $("#lblLastActivity").text(result.TimeStamp);
+
+                appendHistory(
+                    "TX",
+                    result.TimeStamp,
+                    "Success",
+                    message);
+
+                appendHistory(
+                    "RX",
+                    result.TimeStamp,
+                    "Success",
+                    result.ResponseData);
+
+                appendLog(
+                    result.TimeStamp,
+                    "Request",
+                    message);
+
+                appendLog(
+                    result.TimeStamp,
+                    "Response",
+                    result.ResponseData);
+
+                autoScroll();
+
+                showToast(result.SuccessMessage);
+
+            }
+            else {
+
+                showToast(result.SuccessMessage);
+
+            }
+
+        },
+
+        error: function (xhr) {
+
+            hideLoading();
+
+            alert(xhr.responseText);
+
+        }
+
+    });
+
+}
+
+
+function autoScroll() {
+
+    var tx = $("#txtRequest");
+
+    var rx = $("#txtResponse");
+
+    tx.scrollTop(tx[0].scrollHeight);
+
+    rx.scrollTop(rx[0].scrollHeight);
+
+}
+
+
+function appendHistory(direction,
+    time,
+    status,
+    message) {
+
+    var row = "";
+
+    row += "<tr>";
+
+    row += "<td>" + ($("#tblHistory tbody tr").length + 1) + "</td>";
+
+    row += "<td>" + time + "</td>";
+
+    row += "<td>" + direction + "</td>";
+
+    row += "<td>" + status + "</td>";
+
+    row += "<td>" + htmlEncode(message) + "</td>";
+
+    row += "<td>" + message.length + "</td>";
+
+    row += "</tr>";
+
+    $("#tblHistory tbody").append(row);
+
+}
+
+function appendLog(time,
+    type,
+    message) {
+
+    var row = "";
+
+    row += "<tr>";
+
+    row += "<td>" + ($("#tblLogs tbody tr").length + 1) + "</td>";
+
+    row += "<td>" + time + "</td>";
+
+    row += "<td>" + type + "</td>";
+
+    row += "<td>Completed</td>";
+
+    row += "<td>" + htmlEncode(message) + "</td>";
+
+    row += "</tr>";
+
+    $("#tblLogs tbody").append(row);
+
+}
+
+function htmlEncode(value) {
+
+    return $("<div/>").text(value).html();
+
+}
+
+function disconnectServer() {
+
+    if (!page.isConnected) {
+
+        showToast("Already disconnected.");
+
+        return;
+    }
+
+    showLoading();
+
+    $.ajax({
+
+        url: "/SocketClient/Disconnect",
+
+        type: "POST",
+
+        dataType: "json",
+
+        success: function (result) {
+
+            hideLoading();
+
+            page.isConnected = false;
+
+            $("#lblStatus")
+                .removeClass("text-success")
+                .addClass("text-danger")
+                .text("Disconnected");
+
+            $("#txtConnectionStatus")
+                .val("Disconnected");
+
+            $("#lblLastActivity")
+                .text(result.TimeStamp);
+
+            showToast(result.SuccessMessage);
+
+        },
+
+        error: function (xhr) {
+
+            hideLoading();
+
+            alert(xhr.responseText);
+
+        }
+
+    });
+
+}
+
+
+
+$("#btnCopyTx").click(function () {
+
+    navigator.clipboard.writeText($("#txtRequest").val());
+
+    showToast("Request copied.");
+
+});
+
+
+$("#btnCopyRx").click(function () {
+
+    navigator.clipboard.writeText($("#txtResponse").val());
+
+    showToast("Response copied.");
+
+});
+
+
+function scrollResponse() {
+
+    var txt = $("#txtResponse");
+
+    txt.scrollTop(txt[0].scrollHeight);
+
+}
+
+
+$("#txtSearchLog").keyup(function () {
+
+    var value = $(this).val().toLowerCase();
+
+    $("#tblLogs tbody tr").filter(function () {
+
+        $(this).toggle(
+            $(this).text().toLowerCase().indexOf(value) > -1
+        );
+
+    });
+
+});
+
+
+
+$("#btnExport").click(function () {
+
+    var csv = [];
+
+    $("#tblHistory tr").each(function () {
+
+        var row = [];
+
+        $(this).find("th,td").each(function () {
+
+            row.push($(this).text());
+
+        });
+
+        csv.push(row.join(","));
+
+    });
+
+    var blob = new Blob([csv.join("\n")],
+        { type: "text/csv;charset=utf-8;" });
+
+    var link = document.createElement("a");
+
+    link.href = URL.createObjectURL(blob);
+
+    link.download = "SocketHistory.csv";
+
+    link.click();
+
+});
+
+$("#btnClearHistory").click(function () {
+
+    $("#tblHistory tbody").empty();
+
+    $("#tblLogs tbody").empty();
+
+    page.txCount = 0;
+    page.rxCount = 0;
+
+    $("#lblTxCount").text("0");
+
+    $("#lblRxCount").text("0");
+
+    showToast("History cleared.");
+
+});
+
+function formatDate(date) {
+
+    return new Date(date).toLocaleString();
+
+}
+
+function updateActivity() {
+
+    $("#lblLastActivity")
+        .text(formatDate(new Date()));
+
+}
+
+function setConnected(flag) {
+
+    page.isConnected = flag;
+
+}
+
+function incrementTx() {
+
+    page.txCount++;
+
+    $("#lblTxCount").text(page.txCount);
+
+}
+
+function incrementRx() {
+
+    page.rxCount++;
+
+    $("#lblRxCount").text(page.rxCount);
+
+}
