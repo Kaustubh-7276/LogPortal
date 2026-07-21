@@ -1,283 +1,294 @@
-@{ ViewBag.Title = "Socket Client Portal"; Layout = "~/Views/Shared/_Layout.cshtml"; }
-
-<div class="yono-socket-wrapper">
-
-    <!-- Yono Style Header -->
-    <div class="yono-header text-white text-center mb-4">
-        <div class="container">
-            <!-- Replaced Icon with Unicode -->
-            <h1 class="display-6 fw-bold mb-1"><span style="font-size:1.2em; vertical-align:middle;">&#128279;</span> Socket Client Portal</h1>
-            <p class="opacity-75 mb-0" style="font-size: 0.9rem;">Secure Banking Message Gateway</p>
+@{
+    ViewBag.Title = "Socket Client Dashboard";
+    Layout = "~/Views/Shared/_Layout.cshtml";
+}
+@section Styles {
+    <link rel="stylesheet" href="~/Content/SocketClientConnector.css" />
+}
+<div class="container-fluid socket-dashboard">
+    <!-- Page Header -->
+    <div class="row mb-3">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-body d-flex justify-content-between align-items-center">
+                    <div>
+                        <h3 class="mb-1">
+                            <i class="fa fa-exchange"></i>
+                            Socket Client Dashboard
+                        </h3>
+                        <small class="text-muted">
+                            Enterprise Communication Monitor
+                        </small>
+                    </div>
+                    <div>
+                        <button id="btnConnect" class="btn btn-success">
+                            <i class="fa fa-plug"></i> Connect
+                        </button>
+                        <button id="btnDisconnect" class="btn btn-danger">
+                            <i class="fa fa-power-off"></i> Disconnect
+                        </button>
+                        <button id="btnClear" class="btn btn-secondary">
+                            <i class="fa fa-trash"></i> Clear
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
-
-    <div class="container-fluid px-4">
-
-        <!-- Connection Status Bar -->
-        <div class="row mb-3">
-            <div class="col-12">
-                <div class="card border-0 shadow-sm yono-status-card">
-                    <div class="card-body py-2 d-flex justify-content-between align-items-center">
-                        <div class="d-flex align-items-center">
-                            <span class="status-dot bg-secondary me-2"></span>
-                            <span class="fw-semibold text-muted" id="connectionStatus" style="font-size: 0.85rem;">Disconnected</span>
-                        </div>
-                        <small class="text-muted" id="lastActivity" style="font-size: 0.75rem;">Last activity: --</small>
-                    </div>
+    <!-- Status Cards -->
+    <div class="row mb-3">
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card dashboard-card">
+                <div class="card-body text-center">
+                    <i class="fa fa-server fa-2x"></i>
+                    <h6 class="mt-2">Connection</h6>
+                    <h5 id="lblStatus">Disconnected</h5>
                 </div>
             </div>
         </div>
-
-        <!-- Configuration Card -->
-        <div class="card yono-card mb-4 border-0 shadow-sm">
-            <div class="card-header bg-white border-0 pt-4 pb-0 px-4">
-                <h5 class="fw-bold" style="color: var(--yono-blue);"><span style="margin-right:8px;">&#9881;</span>Connection Settings</h5>
-            </div>
-            <div class="card-body px-4 pb-4">
-                <div class="row g-3 align-items-end">
-                    <div class="col-md-7">
-                        <label class="form-label fw-bold small text-uppercase" style="color: var(--yono-purple); letter-spacing: 0.5px;">Server IP Address</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0" style="color: var(--yono-blue);">&#128421;</span>
-                            <input id="txtServerIP" class="form-control border-start-0 ps-0" placeholder="e.g. 192.168.1.10" />
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <label class="form-label fw-bold small text-uppercase" style="color: var(--yono-purple); letter-spacing: 0.5px;">Port</label>
-                        <div class="input-group">
-                            <span class="input-group-text bg-light border-end-0" style="color: var(--yono-blue);">&#128268;</span>
-                            <input id="txtPort" class="form-control border-start-0 ps-0" placeholder="8080" />
-                        </div>
-                    </div>
-                    <div class="col-md-2">
-                        <button class="btn btn-outline-primary w-100 rounded-pill" type="button" disabled style="border-color: var(--yono-blue); color: var(--yono-blue);">Ready</button>
-                    </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card dashboard-card">
+                <div class="card-body text-center">
+                    <i class="fa fa-arrow-up fa-2x"></i>
+                    <h6 class="mt-2">TX Count</h6>
+                    <h4 id="lblTxCount">0</h4>
                 </div>
             </div>
         </div>
-
-        <div class="row">
-            <!-- Request Section -->
-            <div class="col-lg-6 mb-4">
-                <div class="card yono-card h-100 border-0 shadow-sm">
-                    <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0" style="color: #40404c;"><span style="color: var(--yono-blue); margin-right:8px;">&#8593;</span>Request Payload</h5>
-                        <div class="btn-group">
-                            <!-- Applied .btn-yono class -->
-                            <button id="btnSend" class="btn btn-yono shadow-sm">
-                                <span style="margin-right:4px;">&#10148;</span> Send
-                            </button>
-                            <button id="btnClearRequest" class="btn btn-light border rounded-pill px-3 text-muted">
-                                <span>&#128465;</span>
-                            </button>
-                        </div>
-                    </div>
-                    <div class="card-body px-4">
-                        <textarea id="txtRequest" class="form-control font-monospace bg-light" rows="12" placeholder="Enter hex or raw message here..."></textarea>
-                        <div class="form-text text-end mt-2" style="color: var(--yono-purple);"><span id="charCount">0</span> chars</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Response Section -->
-            <div class="col-lg-6 mb-4">
-                <div class="card yono-card h-100 border-0 shadow-sm">
-                    <div class="card-header bg-white border-0 py-3 px-4 d-flex justify-content-between align-items-center">
-                        <h5 class="fw-bold mb-0" style="color: #40404c;"><span style="color: var(--yono-purple); margin-right:8px;">&#8595;</span>Server Response</h5>
-                        <div class="btn-group">
-                            <!-- Using btn-yono for primary actions, standard outline for others with Unicode -->
-                            <button id="btnCopy" class="btn btn-yono btn-sm" style="padding: 4px 12px; font-size:0.85rem;" title="Copy"><span>&#128203;</span></button>
-                            <button id="btnSave" class="btn btn-yono btn-sm" style="padding: 4px 12px; font-size:0.85rem;" title="Save"><span>&#128190;</span></button>
-                            <button id="btnExport" class="btn btn-yono btn-sm" style="padding: 4px 12px; font-size:0.85rem;" title="Export"><span>&#128196;</span></button>
-                            <button id="btnParse" class="btn btn-yono btn-sm" style="padding: 4px 12px; font-size:0.85rem;" title="Parse"><span>&#128200;</span></button>
-                        </div>
-                    </div>
-                    <div class="card-body px-4">
-                        <textarea id="txtResponse" class="form-control font-monospace bg-light" rows="12" readonly placeholder="Waiting for response..."></textarea>
-                        <div class="alert border-0 mt-2 mb-0 py-2 small" style="background-color: #f8f9fa; color: #6c757d;">
-                            <span style="margin-right:4px;">&#9432;</span> <span id="responseMeta">No data received</span>
-                        </div>
-                    </div>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card dashboard-card">
+                <div class="card-body text-center">
+                    <i class="fa fa-arrow-down fa-2x"></i>
+                    <h6 class="mt-2">RX Count</h6>
+                    <h4 id="lblRxCount">0</h4>
                 </div>
             </div>
         </div>
-
-        <!-- Parsed Data Section -->
-        <div class="card yono-card mb-5 border-0 shadow-sm">
-            <div class="card-header bg-white border-0 py-3 px-4">
-                <h5 class="fw-bold mb-0" style="color: #40404c;"><span style="color: var(--yono-blue); margin-right:8px;">&#128202;</span>Parsed Message Data</h5>
-            </div>
-            <div class="card-body px-0 pb-0">
-                <div class="table-responsive">
-                    <table id="tblParsed" class="table table-hover align-middle mb-0">
-                        <thead class="text-uppercase small fw-bold" style="background-color: #f0f4f8; color: var(--yono-blue);">
-                            <tr>
-                                <th class="ps-4 py-3">Msg Type</th>
-                                <th class="py-3">Out Type</th>
-                                <th class="py-3">Branch</th>
-                                <th class="py-3">Teller</th>
-                                <th class="py-3">Journal No</th>
-                                <th class="py-3">Message Content</th>
-                            </tr>
-                        </thead>
-                        <tbody class="small">
-                            <tr>
-                                <td colspan="6" class="text-center py-5 text-muted">
-                                    <span style="font-size:3rem; color: var(--yono-pink); display:block; margin-bottom:10px;">&#128229;</span>
-                                    No parsed data available. Send a message or click "Parse".
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card dashboard-card">
+                <div class="card-body text-center">
+                    <i class="fa fa-clock-o fa-2x"></i>
+                    <h6 class="mt-2">Last Activity</h6>
+                    <h6 id="lblLastActivity">--</h6>
                 </div>
             </div>
         </div>
+    </div>
+    <!-- Connection Panel -->
+    <div class="card shadow-sm mb-3">
+        <div class="card-header">
+            <strong>
+                <i class="fa fa-cogs"></i>
+                Connection Configuration
+            </strong>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-3">
+                    <label>Server</label>
+                    <input type="text"  id="txtServer" name="txtServer" class="form-control"  placeholder="127.0.0.1" />
+                </div>
+                <div class="col-md-2">
+                    <label>Port</label>
+                    <input type="number" id="txtPort" name="txtPort" class="form-control" placeholder="8080" />
+                </div>
+                <div class="col-md-2">
+                    <label>Timeout</label>
+                    <input type="number" id="txtTimeout" name="txtTimeout" class="form-control" placeholder="30" />
+                </div>
+                <div class="col-md-2">
+                    <label>Encoding</label>
+                    <select id="ddlEncoding" name="ddlEncoding" class="form-control">
+                        <option>ASCII</option>
+                        <option>UTF-8</option>
+                        <option>Unicode</option>
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label>Status</label>
+                    <input type="text" id="txtConnectionStatus" name="txtConnectionStatus" class="form-control" readonly />
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- TX/RX -->
+    <div class="row">
+        <!-- TX -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between">
+                    <span>
+                        <i class="fa fa-upload"></i>Transmission (TX)
+                    </span>
+                    <div>
+                        <button class="btn btn-sm btn-primary" id="btnSend">Send</button>
+                        <button class="btn btn-sm btn-secondary"  id="btnCopyTx">Copy</button>
+                        <button class="btn btn-sm btn-danger" id="btnClearTx"> Clear </button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <textarea id="txtRequest" name="txtRequest"   class="form-control" rows="18" spellcheck="false" placeholder="Enter request payload..."></textarea>
+                </div>
+            </div>
+        </div>
+        <!-- RX -->
+        <div class="col-lg-6 mb-3">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between">
+                    <span>
+                        <i class="fa fa-download"></i>
+                        Response (RX)
+                    </span>
+                    <div>
+                        <button class="btn btn-sm btn-success"  id="btnCopyRx">Copy</button>
+                        <button class="btn btn-sm btn-danger" id="btnClearRx">Clear</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <textarea id="txtResponse"
+                                             class="form-control"
+                                             rows="18"
+                                             readonly
+                                             spellcheck="false"></textarea>
 
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Message History -->
+
+    <div class="card shadow-sm mb-3">
+
+        <div class="card-header d-flex justify-content-between">
+
+            <span>
+                <i class="fa fa-history"></i>
+                Message History
+            </span>
+
+            <div>
+
+                <button class="btn btn-sm btn-outline-primary"
+                                    id="btnExport">
+                    Export
+                </button>
+
+                <button class="btn btn-sm btn-outline-danger"
+                                    id="btnClearHistory">
+                    Clear History
+                </button>
+
+            </div>
+
+        </div>
+
+        <div class="card-body p-0">
+
+            <div class="table-responsive">
+
+                <table class="table table-bordered table-hover table-striped mb-0"
+                                   id="tblHistory">
+
+                    <thead>
+
+                        <tr>
+
+                            <th width="70">#</th>
+
+                            <th width="160">Timestamp</th>
+
+                            <th width="100">Direction</th>
+
+                            <th width="120">Status</th>
+
+                            <th>Message</th>
+
+                            <th width="120">Length</th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+                    </tbody>
+
+                </table>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- Communication Logs -->
+
+    <div class="card shadow-sm">
+
+        <div class="card-header d-flex justify-content-between">
+
+            <span>
+                <i class="fa fa-list-alt"></i>
+                Live Communication Logs
+            </span>
+
+            <div>
+
+                <input type="text"
+                                   id="txtSearchLog"
+                                   class="form-control form-control-sm"
+                                   placeholder="Search..." />
+
+            </div>
+
+        </div>
+
+        <div class="card-body p-0">
+
+            <div class="table-responsive">
+
+                <table class="table table-striped table-hover mb-0"
+                                   id="tblLogs">
+
+                    <thead>
+
+                        <tr>
+
+                            <th width="70">ID</th>
+
+                            <th width="170">Time</th>
+
+                            <th width="120">Type</th>
+
+                            <th width="130">Status</th>
+
+                            <th>Details</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+            </div>
+        </div>
     </div>
 </div>
-
-<style>
-    :root {
-        /* Your Provided Variables */
-        --yono-blue: #1c3a94;
-        --yono-purple: #6c2a8d;
-        --yono-grad: linear-gradient(135deg, #1c3a94 0%, #6c2a8d 100%);
-
-        /* Derived Variables for UI consistency */
-        --yono-pink: #d4a0bc;
-        --yono-dark: #40404c;
-        --yono-light: #f5f7fb;
-
-        --card-radius: 20px;
-        --input-radius: 12px;
-    }
-
-    body {
-        background-color: var(--yono-light);
-        font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-    }
-
-    .yono-socket-wrapper { padding-bottom: 50px; }
-
-    /* Header */
-    .yono-header {
-        background: var(--yono-grad);
-        box-shadow: 0 10px 25px rgba(28, 58, 148, 0.3);
-        position: relative;
-        overflow: hidden;
-        border-radius: 0 0 35px 35px
-    }
-    /*.yono-header::after {
-            content: '';
-            position: absolute;
-            top: -20%;
-            right: -5%;
-            width: auto;
-            height: auto;
-            background: rgba(255,255,255,0.15);
-            border-radius: 50%;
-        }*/ 
-
-    /* Cards */
-    .yono-card {
-        border-radius: var(--card-radius);
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-        overflow: hidden; background: #fff;
-    }
-    .yono-card:hover {
-        transform: translateY(-3px);
-        box-shadow: 0 15px 35px rgba(64, 64, 76, 0.1) !important;
-    }
-
-    /* Inputs */
-    .form-control {
-        border-radius: var(--input-radius);
-        border: 1px solid #e0e0e0;
-        padding: 12px 15px;
-        font-size: 0.95rem;
-        transition: all 0.2s;
-        color: var(--yono-dark);
-    }
-    .form-control:focus {
-        box-shadow: 0 0 0 4px rgba(28, 58, 148, 0.15);
-        border-color: var(--yono-blue);
-    }
-    .input-group-text {
-        background-color: #f8f9fa;
-        border-radius: var(--input-radius) 0 0 var(--input-radius);
-        border: 1px solid #e0e0e0;
-        color: var(--yono-blue);
-        font-weight: bold;
-    }
-
-    /* Status Bar */
-    .yono-status-card {
-        border-radius: 50px; background: #fff; border: 1px solid #eee !important;
-    }
-    .status-dot {
-        width: 10px; height: 10px; border-radius: 50%;
-        display: inline-block; box-shadow: 0 0 0 3px rgba(0,0,0,0.05);
-    }
-    .status-dot.bg-success { background-color: #28a745; box-shadow: 0 0 0 3px rgba(40, 167, 69, 0.2); }
-    .status-dot.bg-secondary { background-color: #adb5bd; }
-    .status-dot.bg-danger { background-color: #dc3545; box-shadow: 0 0 0 3px rgba(220, 53, 69, 0.2); }
-
-    /* YOUR PROVIDED BUTTON CSS */
-    .btn-yono {
-        background: var(--yono-grad);
-        color: white !important;
-        border: none;
-        border-radius: 20px;
-        padding: 6px 20px;
-        font-weight: 500;
-        transition: all 0.3s ease;
-        box-shadow: 0 4px 10px rgba(108, 42, 141, 0.2);
-    }
-    .btn-yono:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 6px 15px rgba(108, 42, 141, 0.3);
-        color: white !important;
-        opacity: 0.95;
-    }
-    .btn-yono:active {
-        transform: translateY(0);
-    }
-
-    /* Table & Text */
-    textarea.font-monospace {
-        font-family: 'Consolas', 'Monaco', monospace;
-        font-size: 0.85rem; line-height: 1.5; resize: none; color: #333;
-    }
-    #tblParsed thead th {
-        font-weight: 700; letter-spacing: 0.8px; border-bottom: 2px solid #e9ecef;
-    }
-    #tblParsed tbody tr:hover { background-color: #fcf4f8; }
-
-    @@keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    #tblParsed tbody tr { animation: fadeIn 0.3s ease-out; }
-</style>
-
-<script>
-    // UI Helper: Character Counter
-    document.getElementById('txtRequest').addEventListener('input', function (e) {
-        document.getElementById('charCount').textContent = e.target.value.length;
-    });
-
-    // UI Helper: Update Status
-    function updateStatus(state, message) {
-        const dot = document.querySelector('.status-dot');
-        const text = document.getElementById('connectionStatus');
-        const time = document.getElementById('lastActivity');
-
-        dot.className = 'status-dot me-2 ' + (state === 'connected' ? 'bg-success' : state === 'error' ? 'bg-danger' : 'bg-secondary');
-        text.textContent = state === 'connected' ? 'Connected' : state === 'error' ? 'Connection Failed' : 'Disconnected';
-        if (message) text.textContent += ` - ${message}`;
-
-        const now = new Date();
-        time.textContent = `Last activity: ${now.toLocaleTimeString()}`;
-    }
-    updateStatus('disconnected');
-</script>   
+<!-- Hidden Fields -->
+<input type="hidden" id="hdnSessionId" />
+<input type="hidden" id="hdnConnectionId" />
+<input type="hidden" id="hdnSelectedRow" />
+<!-- Loading Overlay -->
+<div id="loadingPanel" style="display:none;">
+    <div class="loading-content">
+        <i class="fa fa-spinner fa-spin fa-3x"></i>
+        <h4>Please Wait...</h4>
+    </div>
+</div>
+<!-- Copy Notification -->
+<div id="copyToast" style="display:none;">
+    <span>
+        <i class="fa fa-check-circle"></i>
+        Copied Successfully
+    </span>
+</div>
+@section scripts {
+    <script src="~/Scripts/SocketClient.js"></script>
+}
