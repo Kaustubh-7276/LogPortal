@@ -85,19 +85,19 @@
         <div class="card-body">
             <div class="row">
                 <div class="col-md-3">
-                    <label>Server</label>
-                    <input type="text"  id="txtServer" name="txtServer" class="form-control"  placeholder="127.0.0.1" />
+                    <label for="txtServer">Server</label>
+                    <input type="text" id="txtServer" name="txtServer" class="form-control" placeholder="10.0.0.1"/>
                 </div>
                 <div class="col-md-2">
-                    <label>Port</label>
+                    <label for="txtPort">Port</label>
                     <input type="number" id="txtPort" name="txtPort" class="form-control" placeholder="8080" />
                 </div>
                 <div class="col-md-2">
-                    <label>Timeout</label>
+                    <label for="txtTimeout">Timeout</label>
                     <input type="number" id="txtTimeout" name="txtTimeout" class="form-control" placeholder="30" />
                 </div>
                 <div class="col-md-2">
-                    <label>Encoding</label>
+                    <label for="ddlEncoding">Encoding</label>
                     <select id="ddlEncoding" name="ddlEncoding" class="form-control">
                         <option>ASCII</option>
                         <option>UTF-8</option>
@@ -105,7 +105,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label>Status</label>
+                    <label for="txtConnectionStatus">Status</label>
                     <input type="text" id="txtConnectionStatus" name="txtConnectionStatus" class="form-control" readonly />
                 </div>
             </div>
@@ -127,7 +127,7 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <textarea id="txtRequest" name="txtRequest"   class="form-control" rows="18" spellcheck="false" placeholder="Enter request payload..."></textarea>
+                    <textarea id="txtRequest" name="txtRequest" class="form-control" rows="18" spellcheck="false" placeholder="Enter request payload..."></textarea>
                 </div>
             </div>
         </div>
@@ -145,122 +145,62 @@
                     </div>
                 </div>
                 <div class="card-body">
-                    <textarea id="txtResponse"
-                                             class="form-control"
-                                             rows="18"
-                                             readonly
-                                             spellcheck="false"></textarea>
-
+                    <textarea id="txtResponse" class="form-control" rows="18" readonly spellcheck="false"></textarea>
                 </div>
             </div>
         </div>
     </div>
     <!-- Message History -->
-
     <div class="card shadow-sm mb-3">
-
         <div class="card-header d-flex justify-content-between">
-
             <span>
                 <i class="fa fa-history"></i>
                 Message History
             </span>
-
             <div>
-
-                <button class="btn btn-sm btn-outline-primary"
-                                    id="btnExport">
-                    Export
-                </button>
-
-                <button class="btn btn-sm btn-outline-danger"
-                                    id="btnClearHistory">
-                    Clear History
-                </button>
-
+                <button class="btn btn-sm btn-outline-primary" id="btnExport">Export</button>
+                <button class="btn btn-sm btn-outline-danger" id="btnClearHistory">Clear History</button>
             </div>
-
         </div>
-
         <div class="card-body p-0">
-
             <div class="table-responsive">
-
-                <table class="table table-bordered table-hover table-striped mb-0"
-                                   id="tblHistory">
-
+                <table class="table table-bordered table-hover table-striped mb-0" id="tblHistory">
                     <thead>
-
                         <tr>
-
                             <th width="70">#</th>
-
                             <th width="160">Timestamp</th>
-
                             <th width="100">Direction</th>
-
                             <th width="120">Status</th>
-
                             <th>Message</th>
-
                             <th width="120">Length</th>
-
                         </tr>
-
                     </thead>
-
                     <tbody>
                     </tbody>
-
                 </table>
-
             </div>
-
         </div>
-
     </div>
-
     <!-- Communication Logs -->
-
     <div class="card shadow-sm">
-
         <div class="card-header d-flex justify-content-between">
-
             <span>
                 <i class="fa fa-list-alt"></i>
                 Live Communication Logs
             </span>
-
             <div>
-
-                <input type="text"
-                                   id="txtSearchLog"
-                                   class="form-control form-control-sm"
-                                   placeholder="Search..." />
-
+                <input type="text" id="txtSearchLog" class="form-control form-control-sm" placeholder="Search..." />
             </div>
-
         </div>
-
         <div class="card-body p-0">
-
             <div class="table-responsive">
-
-                <table class="table table-striped table-hover mb-0"
-                                   id="tblLogs">
-
+                <table class="table table-striped table-hover mb-0" id="tblLogs">
                     <thead>
-
                         <tr>
-
                             <th width="70">ID</th>
-
                             <th width="170">Time</th>
-
                             <th width="120">Type</th>
-
                             <th width="130">Status</th>
-
                             <th>Details</th>
                         </tr>
                     </thead>
