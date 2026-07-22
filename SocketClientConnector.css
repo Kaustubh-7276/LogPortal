@@ -1,0 +1,510 @@
+html,
+body {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    background: #eef2f7;
+    font-family: "Segoe UI", Arial, sans-serif;
+}
+
+.socket-dashboard {
+    padding: 20px;
+}
+
+
+.page-title {
+    font-size: 28px;
+    font-weight: 600;
+    color: #172b4d;
+    margin-bottom: 4px;
+}
+
+.page-subtitle {
+    color: #7b8794;
+    font-size: 13px;
+}
+
+.card {
+    border: none;
+    border-radius: 12px;
+    box-shadow: 0 4px 14px rgba(0,0,0,.08);
+    transition: all .25s ease;
+}
+
+    .card:hover {
+        box-shadow: 0 8px 22px rgba(0,0,0,.12);
+    }
+
+.card-header {
+    background: linear-gradient(90deg,#0056b3,#007bff);
+    color: #fff;
+    border-radius: 12px 12px 0 0 !important;
+    font-size: 15px;
+    font-weight: 600;
+    padding: 14px 18px;
+}
+
+.card-body {
+    background: #fff;
+}
+
+
+
+.btn {
+    border-radius: 8px;
+    font-weight: 600;
+    transition: .25s;
+}
+
+    .btn:hover {
+        transform: translateY(-2px);
+    }
+
+.btn-success {
+    background: #28a745;
+    border-color: #28a745;
+}
+
+.btn-danger {
+    background: #dc3545;
+    border-color: #dc3545;
+}
+
+.btn-primary {
+    background: #007bff;
+    border-color: #007bff;
+}
+
+.btn-secondary {
+    background: #6c757d;
+    border-color: #6c757d;
+}
+
+
+.dashboard-card {
+    overflow: hidden;
+    position: relative;
+    cursor: default;
+}
+
+    .dashboard-card .card-body {
+        padding: 28px 15px;
+    }
+
+    .dashboard-card i {
+        color: #0d6efd;
+        margin-bottom: 10px;
+    }
+
+    .dashboard-card h6 {
+        color: #6c757d;
+        margin-bottom: 8px;
+    }
+
+    .dashboard-card h4,
+    .dashboard-card h5 {
+        font-weight: bold;
+        color: #1d3557;
+    }
+
+    .dashboard-card:hover {
+        transform: translateY(-5px);
+    }
+
+
+label {
+    font-weight: 600;
+    color: #34495e;
+    margin-bottom: 6px;
+}
+
+.form-control,
+.form-select {
+    border-radius: 8px;
+    border: 1px solid #d7dde5;
+    min-height: 42px;
+}
+
+    .form-control:focus,
+    .form-select:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 0 .2rem rgba(13,110,253,.15);
+    }
+
+
+.row > [class*="col-"] {
+    margin-bottom: 15px;
+}
+
+
+.fa-server {
+    color: #17a2b8;
+}
+
+.fa-arrow-up {
+    color: #28a745;
+}
+
+.fa-arrow-down {
+    color: #fd7e14;
+}
+
+.fa-clock-o {
+    color: #6f42c1;
+}
+
+
+.mb-3 {
+    margin-bottom: 1rem !important;
+}
+
+.mt-2 {
+    margin-top: .5rem !important;
+}
+
+
+@media (max-width:1200px) {
+
+    .socket-dashboard {
+        padding: 15px;
+    }
+}
+
+@media (max-width:992px) {
+    .dashboard-card {
+        margin-bottom: 15px;
+    }
+
+    .card-header {
+        font-size: 14px;
+    }
+}
+
+@media (max-width:768px) {
+
+    .socket-dashboard {
+        padding: 10px;
+    }
+
+    .page-title {
+        font-size: 22px;
+    }
+
+    .btn {
+        margin-bottom: 5px;
+    }
+}
+
+@media (max-width:576px) {
+
+    .card-header {
+        text-align: center;
+    }
+
+    .dashboard-card h4,
+    .dashboard-card h5 {
+        font-size: 20px;
+    }
+
+    .dashboard-card i {
+        font-size: 26px;
+    }
+}
+
+
+.card,
+.btn,
+.form-control {
+    transition: all .25s ease-in-out;
+}
+
+.fade-in {
+    animation: fadeIn .35s ease;
+}
+
+@keyframes fadeIn {
+
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.text-success {
+    color: #28a745 !important;
+}
+
+.text-danger {
+    color: #dc3545 !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.text-primary {
+    color: #0d6efd !important;
+}
+
+.text-muted {
+    color: #6c757d !important;
+}
+/*==========================================================
+    REQUEST / RESPONSE PANELS
+==========================================================*/
+
+#txtRequest,
+#txtResponse {
+    width: 100%;
+    min-height: 500px;
+    resize: vertical;
+    border: 1px solid #d9dee7;
+    border-radius: 10px;
+    padding: 15px;
+    background: #fbfcfe;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 13px;
+    line-height: 1.6;
+    color: #1f2937;
+    overflow: auto;
+    white-space: pre-wrap;
+    word-break: break-word;
+    transition: all .25s ease;
+}
+
+    #txtRequest:focus,
+    #txtResponse:focus {
+        border-color: #0d6efd;
+        box-shadow: 0 0 8px rgba(13,110,253,.20);
+        background: #fff;
+    }
+
+.card.h-100 {
+    height: 100%;
+}
+
+/*==========================================================
+    TABLES
+==========================================================*/
+
+.table {
+    margin-bottom: 0;
+    font-size: 13px;
+}
+
+    .table thead th {
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        background: #0056b3;
+        color: #fff;
+        font-weight: 600;
+        border: none;
+        white-space: nowrap;
+    }
+
+    .table tbody td {
+        vertical-align: middle;
+        padding: 10px;
+    }
+
+.table-striped tbody tr:nth-of-type(odd) {
+    background: #f8fbff;
+}
+
+.table-hover tbody tr:hover {
+    background: #eaf4ff;
+}
+
+/*==========================================================
+    TABLE CONTAINERS
+==========================================================*/
+
+.table-responsive {
+    max-height: 420px;
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+/*==========================================================
+    SEARCH BOX
+==========================================================*/
+
+#txtSearchLog {
+    width: 250px;
+    border-radius: 20px;
+    padding-left: 14px;
+}
+
+/*==========================================================
+    SCROLLBAR
+==========================================================*/
+
+::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background: #edf2f7;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #9db5d3;
+    border-radius: 20px;
+}
+
+    ::-webkit-scrollbar-thumb:hover {
+        background: #6f93c3;
+    }
+
+/*==========================================================
+    LOADING PANEL
+==========================================================*/
+
+#loadingPanel {
+    position: fixed;
+    inset: 0;
+    background: rgba(255,255,255,.80);
+    z-index: 9999;
+}
+
+.loading-content {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%,-50%);
+    text-align: center;
+}
+
+    .loading-content i {
+        color: #0056b3;
+        margin-bottom: 15px;
+    }
+
+    .loading-content h4 {
+        color: #172b4d;
+        font-weight: 600;
+    }
+
+/*==========================================================
+    COPY TOAST
+==========================================================*/
+
+#copyToast {
+    position: fixed;
+    right: 20px;
+    bottom: 25px;
+    background: #198754;
+    color: #fff;
+    padding: 14px 22px;
+    border-radius: 10px;
+    box-shadow: 0 8px 18px rgba(0,0,0,.25);
+    z-index: 10000;
+    display: none;
+}
+
+    #copyToast i {
+        margin-right: 8px;
+    }
+
+/*==========================================================
+    STATUS COLORS
+==========================================================*/
+
+.status-success {
+    color: #198754;
+    font-weight: 600;
+}
+
+.status-failed {
+    color: #dc3545;
+    font-weight: 600;
+}
+
+.status-warning {
+    color: #ff9800;
+    font-weight: 600;
+}
+
+.status-connected {
+    color: #28a745;
+}
+
+.status-disconnected {
+    color: #dc3545;
+}
+
+/*==========================================================
+    BADGES
+==========================================================*/
+
+.badge-success {
+    background: #28a745;
+    color: #fff;
+}
+
+.badge-danger {
+    background: #dc3545;
+    color: #fff;
+}
+
+.badge-warning {
+    background: #ffc107;
+    color: #212529;
+}
+
+.badge-info {
+    background: #17a2b8;
+    color: #fff;
+}
+
+/*==========================================================
+    ANIMATIONS
+==========================================================*/
+
+.pulse {
+    animation: pulse 1.4s infinite;
+}
+
+@keyframes pulse {
+
+    0% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.04);
+        opacity: .85;
+    }
+
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+}
+
+.blink {
+    animation: blink 1s infinite;
+}
+
+@keyframes blink {
+
+    50% {
+        opacity: .35;
+    }
+}
+
+/*==========================================================
+    FOOTER SPACING
+==========================================================*/
+
+.socket-dashboard .card:last-child {
+    margin-bottom: 20px;
+}
