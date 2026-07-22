@@ -11,10 +11,17 @@ namespace BancsEventsLogger.Controllers
     public class SocketClientController : Controller
     {
         private static Socket _clientSocket;
+        public byte[] dataBuffer = new byte[1024];
         private static StreamReader _reader;
         private static StreamWriter _writer;
         private static NetworkStream _networkStream;
 
+        public class SocketPacket
+        {
+            public Socket thisSocket;
+
+
+        }
         public ActionResult SocketClient()
         {
             return View();
@@ -85,22 +92,40 @@ namespace BancsEventsLogger.Controllers
             }
         }
 
+        //private string ReceiveResponse()
+        //{
+        //    try
+        //    {
+        //        StringBuilder response = new StringBuilder();
+
+        //        char[] buffer = new char[4096];
+
+        //        int bytesRead = _reader.Read(buffer, 0, buffer.Length);
+
+        //        if (bytesRead > 0)
+        //        {
+        //            response.Append(buffer, 0, bytesRead);
+        //        }
+
+        //        return response.ToString();
+        //    }
+        //    catch
+        //    {
+        //        throw;
+        //    }
+        //}
+
         private string ReceiveResponse()
         {
             try
             {
-                StringBuilder response = new StringBuilder();
-
-                char[] buffer = new char[4096];
-
-                int bytesRead = _reader.Read(buffer, 0, buffer.Length);
-
-                if (bytesRead > 0)
+                byte[] buffer = new byte[4096];
+                int count = _clientSocket.Receive(buffer);
+                if (count > 0)
                 {
-                    response.Append(buffer, 0, bytesRead);
+                    return string.Empty;
                 }
-
-                return response.ToString();
+                return Encoding.UTF8.GetString(buffer, 0, count);
             }
             catch
             {
