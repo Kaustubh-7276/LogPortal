@@ -1,0 +1,499 @@
+Option Explicit Off
+Option Strict Off
+
+
+Imports FNS.FrontEnd.Workflow.Server
+Imports FNS.FrontEnd.Workflow.Server.Database
+Imports System.Net
+Imports System.IO
+Imports Newtonsoft.Json
+Imports System.Security.Cryptography.X509Certificates
+Imports System.Runtime.Serialization.Json
+ ' Start of IR 20100041 (XML External Entity Injection)
+Imports System.Xml
+Imports System.Xml.Schema
+' End of IR 20100041 (XML External Entity Injection)
+'Start of IR 26040185
+Imports System.Security
+Imports System.Text.RegularExpressions
+Imports System.Text
+Imports System.Web.Script.Serialization
+'End of IR 26040185
+Public Class ImageDBCall
+
+#Region "Public Functions"
+
+    Public Function CallServiceForImageDB(ByVal PROCEDURE_NAME As String, ByVal collParams As Collection, ByVal TellerNum As String) As ArrayList
+        Dim inputJson, input2, outPutString, strwcpath As String
+        Dim aes1 As New TCSSIEncryptor.SIEncryptor.TCSSIEncryptor()
+        Dim serializerouterclass As New DataContractJsonSerializer(GetType(IMG_DB_Response))
+
+        Dim DBresponse As String
+        Dim EncryptedData As IMG_DB_Response
+        'Start of IR 26040185
+        'Dim wspathxml As New System.Xml.XmlDocument()
+        'End of IR 26040185
+        Dim RetObj As ArrayList
+        'Start of IR 26040185
+        Dim ser As New JavaScriptSerializer()
+        Dim validate As Owasp.Esapi.Encoder = New Owasp.Esapi.Encoder()
+        Dim FNS_Component As New System.Xml.XmlDocument()
+        Dim _filePath As String = validate.Canonicalize(Path.GetFullPath(System.AppDomain.CurrentDomain.BaseDirectory & "xml" & Path.DirectorySeparatorChar.ToString() & "Settings" & Path.DirectorySeparatorChar.ToString() & "FNSComponentProperties.xml"))
+        If (Not File.Exists(_filePath)) Then
+            Throw New FileNotFoundException("Property File does not exist for Image Services")
+        End If
+        FNS_Component = OpenXmlDoc(validate.Canonicalize(_filePath))
+        If FNS_Component Is Nothing Then
+            Throw New Exception("Error while loading property file for Image Services")
+        End If
+        strwcpath = SanitizeInput(GetSafeInnerText(FNS_Component.SelectSingleNode("//IMG_DB_WS")))
+        Dim IMG_DBTrace As String = SanitizeInput(GetSafeInnerText(FNS_Component.SelectSingleNode("//IMG_DBTrace")))
+        Dim IMG_DBLogPath As String = SanitizeInput(GetSafeInnerText(FNS_Component.SelectSingleNode("//IMG_DBLogPath")))
+        Dim XssValidateNew As Owasp.Esapi.Encoder = New Owasp.Esapi.Encoder()
+        IMG_DBLogPath = XssValidateNew.Canonicalize(IMG_DBLogPath)
+        'End of IR 26040185
+        ' Start of IR 20100041 (XML External Entity Injection)
+        '    wspathxml.Load(System.AppDomain.CurrentDomain.BaseDirectory & "\xml\Settings\FNSComponentProperties.xml")
+        'Start of IR 26040185 
+        'Dim goodSettingsws As XmlReaderSettings = New XmlReaderSettings()
+        'goodSettingsws.DtdProcessing = DtdProcessing.Ignore
+        'goodSettingsws.XmlResolver = Nothing
+        'goodSettingsws.ValidationType = ValidationType.Schema
+        'goodSettingsws.Schemas = New System.Xml.Schema.XmlSchemaSet()
+        'goodSettingsws.MaxCharactersFromEntities = 1024
+        'goodSettingsws.IgnoreComments = True
+        'Dim goodxmlreadws As XmlReader = XmlReader.Create(System.AppDomain.CurrentDomain.BaseDirectory & "\xml\Settings\FNSComponentProperties.xml", goodSettingsws)
+        'wspathxml.Load(goodxmlreadws)
+        'goodxmlreadws.Close()
+        'End of IR 26040185
+        ' End of IR 20100041 (XML External Entity Injection)
+        'Start of IR 26040185
+        'strwcpath = wspathxml.SelectSingleNode("//IMG_DB_WS").InnerText
+        'Dim IMG_DBTrace As String = wspathxml.SelectSingleNode("//IMG_DBTrace").InnerText
+        'Dim IMG_DBLogPath As String = wspathxml.SelectSingleNode("//IMG_DBLogPath").InnerText
+        'End of IR 26040185
+        'START OF IR 24010107 (Path Manipulation)
+        'Start of IR 26040185
+        'Dim XssValidate As Owasp.Esapi.Encoder = New Owasp.Esapi.Encoder()
+        'IMG_DBLogPath = XssValidate.Canonicalize(IMG_DBLogPath)
+        'End of IR 26040185
+        'END OF IR 24010107 (Path Manipulation)
+
+        'Start of IR 26040185
+        'LogWriterForService("---------- Calling Image DB Service at " + DateTime.Now.ToString("hh:mm:ss") + " ----------", TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        ImageDBLoggeer("---------- Calling Image DB Service at " + DateTime.Now.ToString("hh:mm:ss") + " ----------", TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'End of IR 26040185
+        Dim RefNum As String = aes1.GenerateRefrenceNumber(TellerNum, "SBI", "CB")
+        inputJson = "{" & "'PROCEDURE_NAME' : '" + PROCEDURE_NAME + "'" & "," & "'REQUEST_REF_NO' : '" + RefNum + "'"
+        For i = 1 To collParams.Count
+            If collParams(i).ptype.ToString = "eimage" Then
+                inputJson = inputJson & ",'" + collParams(i).pName + "' : '" + Convert.ToBase64String(collParams(i).pValue) + "'"
+            Else
+                inputJson = inputJson & ",'" + collParams(i).pName + "' : '" + collParams(i).pValue.ToString + "'"
+            End If
+        Next
+        inputJson = inputJson + "}"
+        inputJson = inputJson.Replace(Chr(39), Chr(34))
+        'Start of IR 26040185
+        'LogWriterForService("Input before Encryption = " + inputJson.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        ImageDBLoggeer("Input Request String Before Encryption = " + inputJson.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'End of IR 26040185
+        'start of Ir 21010152
+        'Dim FirstOutput As ArrayList = aes1.GenerateEncryptedKeys(inputJson, "IMG_DB")
+        'start of IR 26040185
+        'Dim FirstOutput As ArrayList = aes1.GenerateEncryptedKeysForOAEP(inputJson, "IMG_DB")
+        Dim FirstOutput As ArrayList = aes1.GenerateEncryptedKeysForOAEPSHA256ForMS(inputJson, "IMG_DB")
+        'End of IR 26040185
+        'end of Ir 21010152
+        inputJson = FirstOutput(0)
+        'Start of IR 26040185
+        'LogWriterForService("EncryptedPayload = " + inputJson.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        ImageDBLoggeer("Encrypted Payload Request for Image Services = " + inputJson.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'End of IR 26040185
+        Dim RSAkeyStringVal As String = FirstOutput(1)
+        'Start of IR 26040185
+        'LogWriterForService("SecretKey = " + RSAkeyStringVal.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        ImageDBLoggeer("Authorized Key for Image Services = " + RSAkeyStringVal.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'End of IR 26040185
+        input2 = "{" & "'REQUEST_REF_NO'  : '" + RefNum + "'," & "'EncryptedPayload' : '" + inputJson + "'}"
+        input2 = input2.Replace(Chr(39), Chr(34))
+        'Start of IR 26040185
+        'LogWriterForService("Input to Image DB Service = " + input2.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        ImageDBLoggeer("Input Request for Image Service = " + input2.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'End of IR 26040185
+
+        Dim request As HttpWebRequest = DirectCast(HttpWebRequest.Create(strwcpath), HttpWebRequest)
+        Dim encoded As New System.Text.UTF8Encoding()
+        Dim myheaders As WebHeaderCollection
+        request.Method = "POST"
+        myheaders = request.Headers
+        myheaders.Add("SecretKey", RSAkeyStringVal)
+        request.ContentType = "application/json"
+        Dim bytes As Byte() = encoded.GetBytes(input2)
+        request.ContentLength = bytes.Length
+        'START OF ADDING IR 20100137 FOR A609
+        'START OF IR 20100137
+        Dim certificateVal As Boolean = True
+        If (1) Then
+            certificateVal = True
+        Else
+            certificateVal = False
+        End If
+
+
+        System.Net.ServicePointManager.ServerCertificateValidationCallback =
+        Function(se As Object,
+        cert As System.Security.Cryptography.X509Certificates.X509Certificate,
+        chain As System.Security.Cryptography.X509Certificates.X509Chain,
+        sslerror As System.Net.Security.SslPolicyErrors) certificateVal
+        'END OF IR 20100137
+        'END OF ADDING IR 20100137 FOR A609
+        ServicePointManager.SecurityProtocol = DirectCast(3072, SecurityProtocolType) Or DirectCast(768, SecurityProtocolType) Or DirectCast(192, SecurityProtocolType)
+        Using requestStream As Stream = request.GetRequestStream()
+            requestStream.Write(bytes, 0, bytes.Length)
+        End Using
+        'Start of IR 26040185
+        'Dim respond As HttpWebResponse
+        Dim respond As HttpWebResponse = Nothing
+        'End of IR 26040185
+        Try
+            'Start of IR 26040185
+            'respond = request.GetResponse()
+            respond = CType(request.GetResponse(), HttpWebResponse)
+            Dim statusInfo As String = "Image DB Response Status: " & respond.StatusCode.ToString()
+            ImageDBLoggeer(statusInfo, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            'End of IR 26040185
+        Catch ex As Exception
+            'Start of IR 26040185
+            'LogWriterForService(ex.Message, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            Dim safeError As String = "Image Service Request failed with Error Code: " & ex.GetType().Name
+            ImageDBLoggeer(safeError, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            'End of IR 26040185
+            Throw New Exception("No response returned from Server, Please try again later.")
+        End Try
+        'Start of IR 26040185
+        'Dim respondstream As Stream = respond.GetResponseStream
+        'Dim respondstreamreader As New StreamReader(respondstream)
+        Dim rawContent As String
+        Dim SafeRawString As New StringBuilder()
+        Using reader As New StreamReader(respond.GetResponseStream(), True)
+            Dim Imagechar As Integer
+            Do
+                Imagechar = reader.Read()
+                If Imagechar = -1 Then Exit Do
+
+                SafeRawString.Append(Convert.ToChar(Imagechar))
+            Loop While True
+            rawContent = SafeRawString.ToString()
+        End Using
+        ImageDBLoggeer("Image Service Raw Response: " + rawContent, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'End of IR 26040185
+        'START OF IR 20050036 (Denial of Service)
+        'start of IR 21010152
+        'START OF IR 24010107 (Denial of Service)
+        'DBresponse = respondstreamreader.ReadToEnd()
+        'Start of IR 26040185
+        'DBresponse = CheckForDenialOfService(respondstreamreader).ToString().Trim()
+        Try
+            If String.IsNullOrWhiteSpace(rawContent) Then
+                Throw New Exception("No response returned from Server, Please try again later.")
+            End If
+            DBresponse = CheckForDenialOfServiceSafe(rawContent).ToString().Trim()
+            If String.IsNullOrWhiteSpace(DBresponse) Then
+                Dim safeList As New ArrayList()
+                safeList.Add(Nothing)
+                Return safeList
+            End If
+        Catch ex As IOException
+            ImageDBLoggeer("Image Service IO Failure: " & ex.Message, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            Throw New Exception("No response returned from Server, Please try again later.")
+        Catch ex As WebException
+            ImageDBLoggeer("Image Service Failure: " & ex.Message, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            Throw New Exception("No response returned from Server, Please try again later.")
+        Catch ex As InvalidOperationException
+            ImageDBLoggeer("Image Service Invalid Operation: " & ex.Message, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            Throw New Exception("No response returned from Server, Please try again later.")
+        Catch ex As Exception
+            Dim safeError As String = "Image Service Response Failure. Type: " & ex.GetType().Name
+            ImageDBLoggeer(safeError, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            Throw New Exception("No response returned from Server, Please try again later.")
+            Try
+                DBresponse = CheckForDenialOfServiceSafe(rawContent).ToString().Trim()
+            Catch exInner As Exception
+                ImageDBLoggeer("Image Service Fallback Response Failure. Type: " & exInner.GetType().Name, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+                Throw New Exception("No response returned from Server, Please try again later.")
+            End Try
+        End Try
+        'End of IR 26040185
+        'START OF IR 24010107 (Denial of Service)
+	'end of IR 21010152
+        'END OF IR 20050036 (Denial of Service)
+        'Start of IR 26040185
+        'Dim outputmem1 As New MemoryStream(System.Text.Encoding.Unicode.GetBytes(DBresponse))
+        'EncryptedData = DirectCast(serializerouterclass.ReadObject(outputmem1), IMG_DB_Response)
+       
+        Dim outputmem1 As New MemoryStream(System.Text.Encoding.UTF8.GetBytes(DBresponse))
+        Try
+            EncryptedData = DirectCast(serializerouterclass.ReadObject(outputmem1), IMG_DB_Response)
+        Catch ex As Exception           
+            EncryptedData = CType(ser.Deserialize(DBresponse, GetType(IMG_DB_Response)), IMG_DB_Response)           
+            Dim safeError As String = "Deserialization failed for response recieved from Image Services. Type: " & ex.GetType().Name
+            ImageDBLoggeer(safeError, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            Throw New Exception("Error in fetching response from Image Server.")
+        End Try
+        'End of IR 26040185
+        If RefNum = EncryptedData.REQUEST_REF_NO Then
+            outPutString = EncryptedData.EncryptedResponse
+        End If
+       
+        'Start of IR 26040185
+        'LogWriterForService("Output Response = " + outPutString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        ImageDBLoggeer("Image Service Output Response = " + outPutString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'End of IR 26040185
+        'START OF ADDING IR 20100137 FOR A609
+        'START OF IR 20100137
+        'Dim DecryptStringVal As String = aes1.AESDecrypt(outPutString)
+        'DecryptStringVal = DecryptStringVal.Replace(Chr(39), Chr(34))
+        'DecryptStringVal = DecryptStringVal.Replace(vbCr, "").Replace(vbLf, "").Replace("\n", "").Replace("\", "")
+        'LogWriterForService("Output Response Decrypted = " + DecryptStringVal, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'RetObj = JsonConvert.DeserializeObject(Of ArrayList)(DecryptStringVal)
+        Try
+            'Start of IR 26040185
+            'Dim DecryptStringVal As String = aes1.AESDecrypt(outPutString)
+            'DecryptStringVal = DecryptStringVal.Replace(Chr(39), Chr(34))
+            'DecryptStringVal = DecryptStringVal.Replace(vbCr, "").Replace(vbLf, "").Replace("\n", "").Replace("\", "")
+            'LogWriterForService("Output Response Decrypted = " + DecryptStringVal, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            'RetObj = JsonConvert.DeserializeObject(Of ArrayList)(DecryptStringVal)
+            'LogWriterForService("RETObjectCount" + RetObj.Count.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)	
+            If Not String.IsNullOrWhiteSpace(outPutString) Then
+                Dim DecryptStringVal As String = aes1.AesDecryptWithGCM(outPutString, FirstOutput(2))
+                DecryptStringVal = DecryptStringVal.Replace(Chr(39), Chr(34))
+                DecryptStringVal = DecryptStringVal.Replace(vbCr, "").Replace(vbLf, "").Replace("\n", "").Replace("\", "")
+                ImageDBLoggeer("Decrypted Response for Image Services = " + DecryptStringVal, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+                RetObj = JsonConvert.DeserializeObject(Of ArrayList)(DecryptStringVal)
+                ImageDBLoggeer("Image Services Response List Count: " + RetObj.Count.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            Else
+                Dim safeList As New ArrayList()
+                safeList.Add(Nothing)
+                Return safeList
+            End If
+            'End of IR 26040185
+        Catch ex As Exception
+            'Start of IR 20110213
+            'LogWriterForService("STATUS_CODE" + EncryptedData.STATUS_CODE.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            'LogWriterForService("ERROR_DESCRIPTION" + EncryptedData.ERROR_DESCRIPTION.ToString, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            'Throw New Exception(EncryptedData.STATUS_CODE.ToString + ":" + EncryptedData.ERROR_DESCRIPTION.ToString)
+            'End of IR 20110213
+            'Start of IR 26040185
+            Dim safeError As String = "Output Response Failure for Image Services. Error Type: " & ex.GetType().Name
+            ImageDBLoggeer(safeError, TellerNum, IMG_DBTrace, IMG_DBLogPath)
+            Throw New Exception("No response returned from Server, Please try again later.")
+            'End of IR 26040185
+        End Try
+        'END OF IR 20100137
+        'END OF ADDING IR 20100137 FOR A609
+        'Start of IR 26040185
+        'LogWriterForService("------- End of Calling Image DB Service at " + DateTime.Now.ToString("hh:mm:ss") + " ------", TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'LogWriterForService("****************************************************", TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        ImageDBLoggeer("------- End of Calling Image DB Service at " + DateTime.Now.ToString("hh:mm:ss") + " ------", TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        ImageDBLoggeer("****************************************************", TellerNum, IMG_DBTrace, IMG_DBLogPath)
+        'End of IR 26040185
+        Return RetObj
+    End Function
+    'Start of IR 26040185
+    Public Function OpenXmlDoc(ByVal filePath As String) As XmlDocument
+        Dim validate As Owasp.Esapi.Encoder = New Owasp.Esapi.Encoder()
+        filePath = validate.Canonicalize(Path.GetFullPath(filePath))
+        Try
+            Dim goodSettingsws As New XmlReaderSettings With {
+                .DtdProcessing = DtdProcessing.Ignore,
+                .XmlResolver = Nothing,
+                .ValidationType = ValidationType.Schema,
+                .Schemas = New System.Xml.Schema.XmlSchemaSet(),
+                .MaxCharactersFromEntities = 1024,
+                .IgnoreComments = True
+            }
+            Using goodxmlreadws As XmlReader = XmlReader.Create(filePath, goodSettingsws)
+                Dim xmlDoc As New System.Xml.XmlDocument()
+                xmlDoc.Load(goodxmlreadws)
+                goodxmlreadws.Close()
+                Return xmlDoc
+            End Using
+        Catch ex As System.IO.FileNotFoundException
+            Throw New System.IO.FileNotFoundException
+            Return Nothing
+        Catch ex As System.IO.IOException
+            Throw New System.IO.IOException
+            Return Nothing
+        Catch ex As System.Xml.XmlException
+            Throw New System.Xml.XmlException
+            Return Nothing
+        Catch ex As System.Security.SecurityException
+            Throw New System.Security.SecurityException
+            Return Nothing
+        Catch ex As Exception
+            Throw New Exception(ex.Message)
+            Return Nothing
+        End Try
+    End Function
+
+    Public Function SanitizeInput(ByVal input As String) As String
+        Dim validate As Owasp.Esapi.Encoder = New Owasp.Esapi.Encoder()
+        If Not String.IsNullOrEmpty(validate.Canonicalize(input)) Then
+            Return System.Security.SecurityElement.Escape(input)
+        Else
+            Return String.Empty
+        End If
+    End Function
+
+    Private Function GetSafeInnerText(ByVal node As XmlNode) As String
+        If node Is Nothing Then Return String.Empty
+        Return node.InnerText
+    End Function
+
+    'End of IR 26040185
+    'Start of IR 26040185
+    'Public Sub LogWriterForService(ByVal strMessage As String, ByVal TellerNum As String, ByVal IMG_DBTrace As String, ByVal IMG_DBLogPath As String)
+    '    If (IMG_DBTrace.ToUpper = "ON") Then
+    'End of IR 26040185
+    ' Start of IR 20100041 (Privacy Violation:Heap Inspection)
+    'Start of IR 26040185
+    'Dim validate As New Owasp.Esapi.Encoder
+    'End of IR 26040185
+    'Start of IR 22120026 (csr 2021)
+    'Dim sPath As String = validate.Canonicalize(IMG_DBLogPath + "\" + DateTime.Now.ToString("dd-MMM-yyyy"))
+    'Start of IR 26040185
+    'Dim sPath As String = validate.Canonicalize(IMG_DBLogPath + Path.DirectorySeparatorChar.ToString() + DateTime.Now.ToString("dd-MMM-yyyy"))
+    'End of IR 26040185
+    'END of IR 22120026 (csr 2021)
+    'If Not Directory.Exists(IMG_DBLogPath + "\" + DateTime.Now.ToString("dd-MMM-yyyy")) Then
+    '    Directory.CreateDirectory(IMG_DBLogPath + "\" + DateTime.Now.ToString("dd-MMM-yyyy"))
+    'End If
+    'Start of IR 26040185
+    'If Not Directory.Exists(sPath) Then
+    '            Directory.CreateDirectory(sPath)
+    '        End If
+    'End of IR 26040185
+    ' End of IR 20100041 (Privacy Violation:Heap Inspection)
+
+    'Start of IR 24010107
+    'Start of IR 26040185
+    'TellerNum = validate.Canonicalize(TellerNum)
+    'End of IR 26040185
+    'End of IR 24010107
+
+    'Start of IR 22120026 (csr 2021)
+    '  Dim logFileName As String = IMG_DBLogPath + "\" + DateTime.Now.ToString("dd-MMM-yyyy") + "\Teller_" + TellerNum + ".txt"
+    'Start of IR 26040185
+    'Dim logFileName As String = IMG_DBLogPath + Path.DirectorySeparatorChar.ToString() + DateTime.Now.ToString("dd-MMM-yyyy") + Path.DirectorySeparatorChar.ToString() + "Teller_" + TellerNum + ".txt"
+    'End of IR 26040185
+    'END of IR 22120026 (csr 2021)
+    ' Start of IR 20100041 (Privacy Violation:Heap Inspection)
+    'Start of IR 26040185
+    'logFileName = validate.Canonicalize(logFileName)
+    'End of IR 26040185
+    ' End of IR 20100041 (Privacy Violation:Heap Inspection)
+    'Start of IR 26040185
+    'If (File.Exists(logFileName)) Then
+    '            File.AppendAllText(logFileName, strMessage + Environment.NewLine)
+    '        Else
+    '            File.WriteAllText(logFileName, strMessage + Environment.NewLine)
+    '        End If
+    '    End If
+    'End Sub
+    'End of IR 26040185
+    'Start of IR 26040185
+    Public Sub ImageDBLoggeer(ByVal strMessage As String, ByVal TellerNum As String,
+                          ByVal IMG_DBTrace As String, ByVal IMG_DBLogPath As String)
+
+
+        Dim safeMessage As String = strMessage.Replace(vbCr, " ").Replace(vbLf, " ")
+        If String.IsNullOrEmpty(TellerNum) OrElse Not Regex.IsMatch(TellerNum, "^[a-zA-Z0-9]+$") Then
+            Throw New SecurityException("Invalid Teller Number: Contains forbidden characters.")
+        End If
+        Dim safeTeller As String = TellerNum
+        If IMG_DBTrace.ToUpper() = "ON" Then
+            Dim dateFolder As String = DateTime.Now.ToString("dd-MMM-yyyy")
+            Dim baseDir As String = Path.GetFullPath(IMG_DBLogPath)
+            Dim combinedPath As String = Path.Combine(baseDir, dateFolder)
+            Dim logDirPath As String = Path.GetFullPath(combinedPath)
+            If Not logDirPath.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase) Then
+                Throw New SecurityException("Invalid log directory: Path traversal detected.")
+            End If
+            If Not Directory.Exists(logDirPath) Then
+                Directory.CreateDirectory(logDirPath)
+            End If
+            Dim fileName As String = "Teller_" & safeTeller & ".txt"
+            Dim logFileName As String = Path.Combine(logDirPath, fileName)
+            Dim finalFilePath As String = Path.GetFullPath(logFileName)
+            If Not finalFilePath.StartsWith(baseDir, StringComparison.OrdinalIgnoreCase) Then
+                Throw New SecurityException("Invalid log file path: Path traversal detected.")
+            End If
+            Dim logEntry As String = DateTime.Now.ToString("HH:mm:ss") & " - " & safeMessage & Environment.NewLine
+            File.AppendAllText(finalFilePath, logEntry)
+        End If
+    End Sub
+    'End of IR 26040185
+#End Region
+
+    'START OF IR 20050036 (Denial of Service)
+    'Start of IR 26040185
+    'Public Function CheckForDenialOfService(ByVal ResponseReader As StreamReader) As Text.StringBuilder
+    '    Dim str As New Text.StringBuilder()
+    '    Dim ch As Char
+    '    Do
+    '        ch = Convert.ToChar(ResponseReader.Read())
+    '        str.Append(ch.ToString)
+    '    Loop While (ResponseReader.Peek() <> -1)
+    '    Return str
+    'End Function
+    Public Function CheckForDenialOfServiceSafe(ByVal content As String) As StringBuilder
+        Dim ServiceStartVal As Integer = 0
+        Dim ServiceEndVal As Integer = 0
+        Dim ServiceString As New StringBuilder()
+        For Each ch As Char In content
+            If ch = "{"c Then
+                ServiceStartVal += 1
+            ElseIf ch = "}"c Then
+                ServiceEndVal += 1
+            End If
+            ServiceString.Append(ch)
+        Next
+        If ServiceStartVal <> ServiceEndVal Then
+            Throw New Exception("Malformed JSON: Mismatched braces.")
+        End If
+
+        Return ServiceString
+    End Function
+    'End of IR 26040185
+    'END OF IR 20050036 (Denial of Service)
+
+End Class
+'Start of IR 26040185
+'Public Class IMG_DB_Response
+'    Public REQUEST_REF_NO As String
+'    Public EncryptedResponse As String
+'End of IR 26040185
+'START OF ADDING IR 20100137 FOR A609
+'START OF IR 20100137
+'Start of IR 26040185
+'Public ERROR_DESCRIPTION As String
+'    Public STATUS_CODE As String
+'    Public STATUS_DESCRIPTION As String
+'End of IR 26040185
+'START OF ir 20110213
+'Public Response As String
+'END OF ir 20110213
+'END OF IR 20100137
+'END OF ADDING IR 20100137 FOR A609
+'Start of IR 26040185
+'End Class
+'End of IR 26040185
+Public Class IMG_DB_Response
+    Public Property REQUEST_REF_NO As String
+    Public Property EncryptedResponse As String
+    Public Property ERROR_DESCRIPTION As String
+    Public Property STATUS_CODE As String
+    Public Property STATUS_DESCRIPTION As String
+End Class
+'End of IR 26040185
