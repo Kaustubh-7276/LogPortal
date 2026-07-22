@@ -1,5 +1,691 @@
 
-var SocketClient = (function () {
+/*==========================================================
+    SocketClient.js
+    Enterprise Socket Client
+    ASP.NET MVC (.NET Framework 4.8)
+==========================================================*/
+
+var SocketClient = {
+
+    controls: {},
+
+    state: {
+
+        connected: false,
+
+        txCount: 0,
+
+        rxCount: 0,
+
+        historyCount: 0,
+
+        loading: false
+
+    },
+
+    init: function () {
+
+        this.cache();
+
+        this.events();
+
+        this.initializeScreen();
+
+        this.checkConnection();
+
+    },
+
+    cache: function () {
+
+        this.controls.server = $("#txtServer");
+        this.controls.port = $("#txtPort");
+        this.controls.timeout = $("#txtTimeout");
+
+        this.controls.request = $("#txtRequest");
+        this.controls.response = $("#txtResponse");
+
+        this.controls.status = $("#lblStatus");
+        this.controls.connection = $("#txtConnectionStatus");
+
+        this.controls.tx = $("#lblTxCount");
+        this.controls.rx = $("#lblRxCount");
+
+        this.controls.activity = $("#lblLastActivity");
+
+        this.controls.connect = $("#btnConnect");
+        this.controls.disconnect = $("#btnDisconnect");
+        this.controls.send = $("#btnSend");
+
+        this.controls.clear = $("#btnClear");
+        this.controls.clearTx = $("#btnClearTx");
+        this.controls.clearRx = $("#btnClearRx");
+
+        this.controls.copyTx = $("#btnCopyTx");
+        this.controls.copyRx = $("#btnCopyRx");
+
+        this.controls.exportHistory = $("#btnExport");
+        this.controls.clearHistory = $("#btnClearHistory");
+
+        this.controls.search = $("#txtSearchLog");
+
+        this.controls.history = $("#tblHistory tbody");
+
+        this.controls.logs = $("#tblLogs tbody");
+
+        this.controls.loading = $("#loadingPanel");
+
+        this.controls.toast = $("#copyToast");
+
+    },
+
+    events: function () {
+
+        var self = this;
+
+        self.controls.connect.off("click").on("click", function () {
+
+            self.connect();
+
+        });
+
+        self.controls.disconnect.off("click").on("click", function () {
+
+            self.disconnect();
+
+        });
+
+        self.controls.send.off("click").on("click", function () {
+
+            self.send();
+
+        });
+
+        self.controls.clear.off("click").on("click", function () {
+
+            self.initializeScreen();
+
+        });
+
+        self.controls.clearTx.off("click").on("click", function () {
+
+            self.controls.request.val("");
+
+        });
+
+        self.controls.clearRx.off("click").on("click", function () {
+
+            self.controls.response.val("");
+
+        });
+
+        self.controls.copyTx.off("click").on("click", function () {
+
+            self.copy(self.controls.request);
+
+        });
+
+        self.controls.copyRx.off("click").on("click", function () {
+
+            self.copy(self.controls.response);
+
+        });
+
+        self.controls.exportHistory.off("click").on("click", function () {
+
+            self.exportHistory();
+
+        });
+
+        self.controls.clearHistory.off("click").on("click", function () {
+
+            self.clearHistory();
+
+        });
+
+        self.controls.search.off("keyup").on("keyup", function () {
+
+            self.searchLogs($(this).val());
+
+        });
+
+    },
+
+    initializeScreen: function () {
+
+        this.state.connected = false;
+
+        this.state.txCount = 0;
+
+        this.state.rxCount = 0;
+
+        this.state.historyCount = 0;
+
+        this.controls.connection.val("Disconnected");
+
+        this.controls.status
+            .removeClass("text-success")
+            .addClass("text-danger")
+            .text("Disconnected");
+
+        this.controls.tx.text("0");
+
+        this.controls.rx.text("0");
+
+        this.controls.activity.text("--");
+
+        this.controls.request.val("");
+
+        this.controls.response.val("");
+
+        this.controls.history.empty();
+
+        this.controls.logs.empty();
+
+        this.controls.connect.prop("disabled", false);
+
+        this.controls.disconnect.prop("disabled", true);
+
+        this.controls.send.prop("disabled", true);
+
+    },
+
+    showLoading: function () {
+
+        this.state.loading = true;
+
+        this.controls.loading.fadeIn(150);
+
+    },
+
+    hideLoading: function () {
+
+        this.state.loading = false;
+
+        this.controls.loading.fadeOut(150);
+
+    },
+
+    showToast: function (message) {
+
+        this.controls.toast.find("span").text(message);
+
+        this.controls.toast
+            .stop(true, true)
+            .fadeIn(250)
+            .delay(1800)
+            .fadeOut(250);
+
+    },
+
+    setConnection: function (status) {
+
+        this.state.connected = status;
+
+        if (status) {
+
+            this.controls.connection.val("Connected");
+
+            this.controls.status
+                .removeClass("text-danger")
+                .addClass("text-success")
+                .text("Connected");
+
+            this.controls.connect.prop("disabled", true);
+
+            this.controls.disconnect.prop("disabled", false);
+
+            this.controls.send.prop("disabled", false);
+
+        }
+        else {
+
+            this.controls.connection.val("Disconnected");
+
+            this.controls.status
+                .removeClass("text-success")
+                .addClass("text-danger")
+                .text("Disconnected");
+
+            this.controls.connect.prop("disabled", false);
+
+            this.controls.disconnect.prop("disabled", true);
+
+            this.controls.send.prop("disabled", true);
+
+        }
+
+    },
+    connect: function () {
+
+        var self = this;
+
+        if ($.trim(self.controls.server.val()) === "") {
+
+            self.showToast("Please enter Server IP.");
+
+            self.controls.server.focus();
+
+            return;
+
+        }
+
+        if ($.trim(self.controls.port.val()) === "") {
+
+            self.showToast("Please enter Port.");
+
+            self.controls.port.focus();
+
+            return;
+
+        }
+
+        self.showLoading();
+
+        $.ajax({
+
+            url: "/SocketClient/Connect",
+
+            type: "POST",
+
+            dataType: "json",
+
+            data: {
+
+                HostAddress: self.controls.server.val(),
+
+                HostPort: self.controls.port.val()
+
+            },
+
+            success: function (result) {
+
+                self.hideLoading();
+
+                if (result.Success) {
+
+                    self.setConnection(true);
+
+                    self.controls.activity.text(result.TimeStamp || "--");
+
+                    self.showToast(result.Message || result.SuccessMessage || "Connected Successfully");
+
+                }
+                else {
+
+                    self.setConnection(false);
+
+                    self.showToast(result.Message || result.SuccessMessage || "Unable to Connect");
+
+                }
+
+            },
+
+            error: function (xhr) {
+
+                self.hideLoading();
+
+                self.setConnection(false);
+
+                self.showToast("Connection Failed");
+
+                console.log(xhr);
+
+            }
+
+        });
+
+    },
+
+    disconnect: function () {
+
+        var self = this;
+
+        if (!self.state.connected) {
+
+            self.showToast("Already Disconnected");
+
+            return;
+
+        }
+
+        self.showLoading();
+
+        $.ajax({
+
+            url: "/SocketClient/Disconnect",
+
+            type: "POST",
+
+            dataType: "json",
+
+            success: function (result) {
+
+                self.hideLoading();
+
+                self.setConnection(false);
+
+                self.initializeScreen();
+
+                self.controls.request.val("");
+
+                self.controls.response.val("");
+
+                self.controls.activity.text(result.TimeStamp || "--");
+
+                self.showToast(result.Message || result.SuccessMessage || "Disconnected");
+
+            },
+
+            error: function () {
+
+                self.hideLoading();
+
+                self.showToast("Disconnect Failed");
+
+            }
+
+        });
+
+    },
+
+    checkConnection: function () {
+
+        var self = this;
+
+        $.ajax({
+
+            url: "/SocketClient/GetConnectionStatus",
+
+            type: "GET",
+
+            dataType: "json",
+
+            success: function (result) {
+
+                if (result.ConnectionStatus === "Connected") {
+
+                    self.setConnection(true);
+
+                }
+                else {
+
+                    self.setConnection(false);
+
+                }
+
+            },
+
+            error: function () {
+
+                self.setConnection(false);
+
+            }
+
+        });
+
+    },
+
+    send: function () {
+
+        var self = this;
+
+        if (!self.state.connected) {
+
+            self.showToast("Please connect to server first.");
+
+            return;
+
+        }
+
+        var request = self.controls.request.val();
+
+        if ($.trim(request) === "") {
+
+            self.showToast("Please enter request.");
+
+            self.controls.request.focus();
+
+            return;
+
+        }
+
+        self.showLoading();
+
+        $.ajax({
+
+            url: "/SocketClient/Send",
+
+            type: "POST",
+
+            dataType: "json",
+
+            data: {
+
+                HostMessage: request
+
+            },
+
+            success: function (result) {
+
+                self.hideLoading();
+
+                if (result.Success) {
+
+                    self.controls.response.val(result.ResponseData || result.Response || "");
+
+                    self.state.txCount++;
+
+                    self.state.rxCount++;
+
+                    self.controls.tx.text(self.state.txCount);
+
+                    self.controls.rx.text(self.state.rxCount);
+
+                    self.controls.activity.text(result.TimeStamp || "--");
+
+                    self.autoScroll();
+
+                    self.addHistory("TX", request, result.TimeStamp);
+
+                    self.addHistory("RX", result.ResponseData || "", result.TimeStamp);
+
+                    self.addLog("Request", request, result.TimeStamp);
+
+                    self.addLog("Response", result.ResponseData || "", result.TimeStamp);
+
+                    self.showToast(result.Message || result.SuccessMessage || "Request Sent");
+
+                }
+                else {
+
+                    self.showToast(result.Message || result.SuccessMessage || "Request Failed");
+
+                }
+
+            },
+
+            error: function (xhr) {
+
+                self.hideLoading();
+
+                self.showToast("Communication Error");
+
+                console.log(xhr);
+
+            }
+
+        });
+
+    },
+    autoScroll: function () {
+
+        if (this.controls.request.length > 0) {
+            this.controls.request.scrollTop(this.controls.request[0].scrollHeight);
+        }
+
+        if (this.controls.response.length > 0) {
+            this.controls.response.scrollTop(this.controls.response[0].scrollHeight);
+        }
+
+    },
+
+    copy: function (control) {
+
+        var self = this;
+
+        if (!control || control.length === 0)
+            return;
+
+        navigator.clipboard.writeText(control.val())
+            .then(function () {
+
+                self.showToast("Copied Successfully");
+
+            })
+            .catch(function () {
+
+                self.showToast("Copy Failed");
+
+            });
+
+    },
+
+    addHistory: function (direction, message, timeStamp) {
+
+        this.state.historyCount++;
+
+        var row = "";
+
+        row += "<tr>";
+
+        row += "<td>" + this.state.historyCount + "</td>";
+
+        row += "<td>" + (timeStamp || "--") + "</td>";
+
+        row += "<td>" + direction + "</td>";
+
+        row += "<td>" + (direction === "TX" ? "Sent" : "Received") + "</td>";
+
+        row += "<td>" + this.htmlEncode(message) + "</td>";
+
+        row += "<td>" + message.length + "</td>";
+
+        row += "</tr>";
+
+        this.controls.history.append(row);
+
+    },
+
+    addLog: function (type, message, timeStamp) {
+
+        var row = "";
+
+        row += "<tr>";
+
+        row += "<td>" + (this.controls.logs.find("tr").length + 1) + "</td>";
+
+        row += "<td>" + (timeStamp || "--") + "</td>";
+
+        row += "<td>" + type + "</td>";
+
+        row += "<td>Completed</td>";
+
+        row += "<td>" + this.htmlEncode(message) + "</td>";
+
+        row += "</tr>";
+
+        this.controls.logs.append(row);
+
+    },
+
+    clearHistory: function () {
+
+        this.state.historyCount = 0;
+
+        this.state.txCount = 0;
+
+        this.state.rxCount = 0;
+
+        this.controls.history.empty();
+
+        this.controls.logs.empty();
+
+        this.controls.tx.text("0");
+
+        this.controls.rx.text("0");
+
+        this.showToast("History Cleared");
+
+    },
+
+    searchLogs: function (text) {
+
+        text = $.trim(text).toLowerCase();
+
+        this.controls.logs.find("tr").each(function () {
+
+            var row = $(this);
+
+            row.toggle(row.text().toLowerCase().indexOf(text) > -1);
+
+        });
+
+    },
+
+    exportHistory: function () {
+
+        var csv = [];
+
+        $("#tblHistory tr").each(function () {
+
+            var row = [];
+
+            $(this).find("th,td").each(function () {
+
+                row.push($(this).text());
+
+            });
+
+            csv.push(row.join(","));
+
+        });
+
+        var blob = new Blob(
+            [csv.join("\n")],
+            { type: "text/csv;charset=utf-8;" });
+
+        var link = document.createElement("a");
+
+        link.href = URL.createObjectURL(blob);
+
+        link.download = "SocketHistory.csv";
+
+        document.body.appendChild(link);
+
+        link.click();
+
+        document.body.removeChild(link);
+
+    },
+
+    htmlEncode: function (value) {
+
+        if (value == null)
+            return "";
+
+        return $("<div/>").text(value).html();
+
+    }
+
+};
+
+$(document).ready(function () {
+
+    SocketClient.init();
+
+});
+
+/*var SocketClient = (function () {
 
     var page = {
 
@@ -568,4 +1254,4 @@ function incrementRx() {
 
     $("#lblRxCount").text(page.rxCount);
 
-}
+}*/
