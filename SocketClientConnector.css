@@ -508,3 +508,14 @@ label {
 .socket-dashboard .card:last-child {
     margin-bottom: 20px;
 }
+
+
+#txtServer,
+#txtPort,
+#txtConnectionStatus{
+    height:42px;
+}
+#txtConnectionStatus{
+    background:#f8f9fa;
+    font-weight:600;
+}
