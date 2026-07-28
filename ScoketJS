@@ -1,4 +1,3 @@
-
 /*==========================================================
     SocketClient.js
     Enterprise Socket Client
@@ -6,6 +5,8 @@
 ==========================================================*/
 
 var SocketClient = {
+
+    timer: null,
 
     controls: {},
 
@@ -17,29 +18,16 @@ var SocketClient = {
 
         rxCount: 0,
 
-        historyCount: 0,
+        lastResponse: "",
 
-        loading: false
-
-    },
-
-    init: function () {
-
-        this.cache();
-
-        this.events();
-
-        this.initializeScreen();
-
-        this.checkConnection();
+        polling: false
 
     },
 
-    cache: function () {
+    cacheControls: function () {
 
         this.controls.server = $("#txtServer");
         this.controls.port = $("#txtPort");
-        this.controls.timeout = $("#txtTimeout");
 
         this.controls.request = $("#txtRequest");
         this.controls.response = $("#txtResponse");
@@ -57,20 +45,20 @@ var SocketClient = {
         this.controls.send = $("#btnSend");
 
         this.controls.clear = $("#btnClear");
-        this.controls.clearTx = $("#btnClearTx");
-        this.controls.clearRx = $("#btnClearRx");
 
         this.controls.copyTx = $("#btnCopyTx");
         this.controls.copyRx = $("#btnCopyRx");
 
+        this.controls.clearTx = $("#btnClearTx");
+        this.controls.clearRx = $("#btnClearRx");
+
         this.controls.exportHistory = $("#btnExport");
         this.controls.clearHistory = $("#btnClearHistory");
 
-        this.controls.search = $("#txtSearchLog");
-
         this.controls.history = $("#tblHistory tbody");
-
         this.controls.logs = $("#tblLogs tbody");
+
+        this.controls.search = $("#txtSearchLog");
 
         this.controls.loading = $("#loadingPanel");
 
@@ -78,71 +66,83 @@ var SocketClient = {
 
     },
 
-    events: function () {
+    init: function () {
+
+        this.cacheControls();
+
+        this.registerEvents();
+
+        this.initializeScreen();
+
+        this.checkConnection();
+
+    },
+
+    registerEvents: function () {
 
         var self = this;
 
-        self.controls.connect.off("click").on("click", function () {
+        self.controls.connect.on("click", function () {
 
             self.connect();
 
         });
 
-        self.controls.disconnect.off("click").on("click", function () {
+        self.controls.disconnect.on("click", function () {
 
             self.disconnect();
 
         });
 
-        self.controls.send.off("click").on("click", function () {
+        self.controls.send.on("click", function () {
 
             self.send();
 
         });
 
-        self.controls.clear.off("click").on("click", function () {
+        self.controls.clear.on("click", function () {
 
             self.initializeScreen();
 
         });
 
-        self.controls.clearTx.off("click").on("click", function () {
+        self.controls.clearTx.on("click", function () {
 
             self.controls.request.val("");
 
         });
 
-        self.controls.clearRx.off("click").on("click", function () {
+        self.controls.clearRx.on("click", function () {
 
             self.controls.response.val("");
 
         });
 
-        self.controls.copyTx.off("click").on("click", function () {
+        self.controls.copyTx.on("click", function () {
 
             self.copy(self.controls.request);
 
         });
 
-        self.controls.copyRx.off("click").on("click", function () {
+        self.controls.copyRx.on("click", function () {
 
             self.copy(self.controls.response);
 
         });
 
-        self.controls.exportHistory.off("click").on("click", function () {
+        self.controls.exportHistory.on("click", function () {
 
             self.exportHistory();
 
         });
 
-        self.controls.clearHistory.off("click").on("click", function () {
+        self.controls.clearHistory.on("click", function () {
 
             self.clearHistory();
 
         });
 
-        self.controls.search.off("keyup").on("keyup", function () {
+        self.controls.search.on("keyup", function () {
 
             self.searchLogs($(this).val());
 
@@ -158,14 +158,11 @@ var SocketClient = {
 
         this.state.rxCount = 0;
 
-        this.state.historyCount = 0;
+        this.state.lastResponse = "";
 
-        this.controls.connection.val("Disconnected");
+        this.controls.request.val("");
 
-        this.controls.status
-            .removeClass("text-success")
-            .addClass("text-danger")
-            .text("Disconnected");
+        this.controls.response.val("");
 
         this.controls.tx.text("0");
 
@@ -173,62 +170,30 @@ var SocketClient = {
 
         this.controls.activity.text("--");
 
-        this.controls.request.val("");
-
-        this.controls.response.val("");
-
         this.controls.history.empty();
 
         this.controls.logs.empty();
 
-        this.controls.connect.prop("disabled", false);
-
-        this.controls.disconnect.prop("disabled", true);
-
-        this.controls.send.prop("disabled", true);
+        this.setConnection(false);
 
     },
 
-    showLoading: function () {
+    setConnection: function (connected) {
 
-        this.state.loading = true;
+        this.state.connected = connected;
 
-        this.controls.loading.fadeIn(150);
-
-    },
-
-    hideLoading: function () {
-
-        this.state.loading = false;
-
-        this.controls.loading.fadeOut(150);
-
-    },
-
-    showToast: function (message) {
-
-        this.controls.toast.find("span").text(message);
-
-        this.controls.toast
-            .stop(true, true)
-            .fadeIn(250)
-            .delay(1800)
-            .fadeOut(250);
-
-    },
-
-    setConnection: function (status) {
-
-        this.state.connected = status;
-
-        if (status) {
-
-            this.controls.connection.val("Connected");
+        if (connected) {
 
             this.controls.status
                 .removeClass("text-danger")
                 .addClass("text-success")
                 .text("Connected");
+
+            this.controls.connection.val("Connected");
+
+            this.controls.server.prop("disabled", true);
+
+            this.controls.port.prop("disabled", true);
 
             this.controls.connect.prop("disabled", true);
 
@@ -239,12 +204,16 @@ var SocketClient = {
         }
         else {
 
-            this.controls.connection.val("Disconnected");
-
             this.controls.status
                 .removeClass("text-success")
                 .addClass("text-danger")
                 .text("Disconnected");
+
+            this.controls.connection.val("Disconnected");
+
+            this.controls.server.prop("disabled", false);
+
+            this.controls.port.prop("disabled", false);
 
             this.controls.connect.prop("disabled", false);
 
@@ -266,7 +235,6 @@ var SocketClient = {
             self.controls.server.focus();
 
             return;
-
         }
 
         if ($.trim(self.controls.port.val()) === "") {
@@ -276,7 +244,6 @@ var SocketClient = {
             self.controls.port.focus();
 
             return;
-
         }
 
         self.showLoading();
@@ -293,7 +260,7 @@ var SocketClient = {
 
                 HostAddress: self.controls.server.val(),
 
-                HostPort: self.controls.port.val()
+                HostPort: parseInt(self.controls.port.val())
 
             },
 
@@ -301,22 +268,22 @@ var SocketClient = {
 
                 self.hideLoading();
 
-                if (result.Success) {
+                if (!result.Success) {
 
-                    self.setConnection(true);
-
-                    self.controls.activity.text(result.TimeStamp || "--");
-
-                    self.showToast(result.Message || result.SuccessMessage || "Connected Successfully");
-
-                }
-                else {
+                    self.showToast(result.SuccessMessage);
 
                     self.setConnection(false);
 
-                    self.showToast(result.Message || result.SuccessMessage || "Unable to Connect");
-
+                    return;
                 }
+
+                self.setConnection(true);
+
+                self.controls.activity.text(result.TimeStamp);
+
+                self.startPolling();
+
+                self.showToast(result.SuccessMessage);
 
             },
 
@@ -326,7 +293,7 @@ var SocketClient = {
 
                 self.setConnection(false);
 
-                self.showToast("Connection Failed");
+                self.showToast("Unable to connect.");
 
                 console.log(xhr);
 
@@ -342,10 +309,9 @@ var SocketClient = {
 
         if (!self.state.connected) {
 
-            self.showToast("Already Disconnected");
+            self.showToast("Already disconnected.");
 
             return;
-
         }
 
         self.showLoading();
@@ -362,25 +328,21 @@ var SocketClient = {
 
                 self.hideLoading();
 
-                self.setConnection(false);
+                self.stopPolling();
 
                 self.initializeScreen();
 
-                self.controls.request.val("");
-
-                self.controls.response.val("");
-
-                self.controls.activity.text(result.TimeStamp || "--");
-
-                self.showToast(result.Message || result.SuccessMessage || "Disconnected");
+                self.showToast(result.SuccessMessage);
 
             },
 
-            error: function () {
+            error: function (xhr) {
 
                 self.hideLoading();
 
-                self.showToast("Disconnect Failed");
+                self.showToast("Disconnect failed.");
+
+                console.log(xhr);
 
             }
 
@@ -406,6 +368,8 @@ var SocketClient = {
 
                     self.setConnection(true);
 
+                    self.startPolling();
+
                 }
                 else {
 
@@ -413,18 +377,39 @@ var SocketClient = {
 
                 }
 
-            },
-
-            error: function () {
-
-                self.setConnection(false);
-
             }
 
         });
 
     },
 
+    showLoading: function () {
+
+        this.controls.loading.stop(true, true).fadeIn(150);
+
+    },
+
+    hideLoading: function () {
+
+        this.controls.loading.stop(true, true).fadeOut(150);
+
+    },
+
+    showToast: function (message) {
+
+        this.controls.toast.find("span").html(
+
+            "<i class='fa fa-check-circle'></i> " + message
+
+        );
+
+        this.controls.toast
+            .stop(true, true)
+            .fadeIn(250)
+            .delay(1800)
+            .fadeOut(250);
+
+    },
     send: function () {
 
         var self = this;
@@ -434,19 +419,17 @@ var SocketClient = {
             self.showToast("Please connect to server first.");
 
             return;
-
         }
 
-        var request = self.controls.request.val();
+        var request = $.trim(self.controls.request.val());
 
-        if ($.trim(request) === "") {
+        if (request === "") {
 
-            self.showToast("Please enter request.");
+            self.showToast("Please enter request message.");
 
             self.controls.request.focus();
 
             return;
-
         }
 
         self.showLoading();
@@ -469,38 +452,32 @@ var SocketClient = {
 
                 self.hideLoading();
 
-                if (result.Success) {
+                if (!result.Success) {
 
-                    self.controls.response.val(result.ResponseData || result.Response || "");
+                    self.showToast(result.SuccessMessage);
 
-                    self.state.txCount++;
-
-                    self.state.rxCount++;
-
-                    self.controls.tx.text(self.state.txCount);
-
-                    self.controls.rx.text(self.state.rxCount);
-
-                    self.controls.activity.text(result.TimeStamp || "--");
-
-                    self.autoScroll();
-
-                    self.addHistory("TX", request, result.TimeStamp);
-
-                    self.addHistory("RX", result.ResponseData || "", result.TimeStamp);
-
-                    self.addLog("Request", request, result.TimeStamp);
-
-                    self.addLog("Response", result.ResponseData || "", result.TimeStamp);
-
-                    self.showToast(result.Message || result.SuccessMessage || "Request Sent");
-
+                    return;
                 }
-                else {
 
-                    self.showToast(result.Message || result.SuccessMessage || "Request Failed");
+                self.state.txCount++;
 
-                }
+                self.controls.tx.text(self.state.txCount);
+
+                self.controls.activity.text(result.TimeStamp);
+
+                self.addHistory(
+                    "TX",
+                    request,
+                    result.TimeStamp);
+
+                self.addLog(
+                    "Request",
+                    request,
+                    result.TimeStamp);
+
+                self.autoScroll();
+
+                self.showToast(result.SuccessMessage);
 
             },
 
@@ -508,7 +485,7 @@ var SocketClient = {
 
                 self.hideLoading();
 
-                self.showToast("Communication Error");
+                self.showToast("Communication Error.");
 
                 console.log(xhr);
 
@@ -517,48 +494,104 @@ var SocketClient = {
         });
 
     },
-    autoScroll: function () {
 
-        if (this.controls.request.length > 0) {
-            this.controls.request.scrollTop(this.controls.request[0].scrollHeight);
-        }
-
-        if (this.controls.response.length > 0) {
-            this.controls.response.scrollTop(this.controls.response[0].scrollHeight);
-        }
-
-    },
-
-    copy: function (control) {
+    startPolling: function () {
 
         var self = this;
 
-        if (!control || control.length === 0)
+        if (self.state.polling)
             return;
 
-        navigator.clipboard.writeText(control.val())
-            .then(function () {
+        self.state.polling = true;
 
-                self.showToast("Copied Successfully");
+        self.timer = window.setInterval(function () {
 
-            })
-            .catch(function () {
+            self.getLatestResponse();
 
-                self.showToast("Copy Failed");
-
-            });
+        }, 500);
 
     },
 
-    addHistory: function (direction, message, timeStamp) {
+    stopPolling: function () {
 
-        this.state.historyCount++;
+        if (this.timer != null) {
+
+            clearInterval(this.timer);
+
+            this.timer = null;
+
+        }
+
+        this.state.polling = false;
+
+    },
+
+    getLatestResponse: function () {
+
+        var self = this;
+
+        if (!self.state.connected)
+            return;
+
+        $.ajax({
+
+            url: "/SocketClient/GetLatestResponse",
+
+            type: "GET",
+
+            dataType: "json",
+
+            success: function (result) {
+
+                if (!result.Success)
+                    return;
+
+                if (!result.ResponseData)
+                    return;
+
+                if (result.ResponseData === self.state.lastResponse)
+                    return;
+
+                self.state.lastResponse = result.ResponseData;
+
+                self.state.rxCount++;
+
+                self.controls.rx.text(self.state.rxCount);
+
+                self.controls.response.val(result.ResponseData);
+
+                self.controls.activity.text(result.TimeStamp);
+
+                self.addHistory(
+                    "RX",
+                    result.ResponseData,
+                    result.TimeStamp);
+
+                self.addLog(
+                    "Response",
+                    result.ResponseData,
+                    result.TimeStamp);
+
+                self.autoScroll();
+
+            },
+
+            error: function (xhr) {
+
+                console.log(xhr);
+
+            }
+
+        });
+
+    },
+    addHistory: function (direction, message, timeStamp) {
 
         var row = "";
 
         row += "<tr>";
 
-        row += "<td>" + this.state.historyCount + "</td>";
+        row += "<td>" + (this.controls.history.find("tr").length + 1) + "</td>";
 
         row += "<td>" + (timeStamp || "--") + "</td>";
 
@@ -598,17 +631,38 @@ var SocketClient = {
 
     },
 
+    copy: function (control) {
+
+        var self = this;
+
+        if (!control || control.length === 0)
+            return;
+
+        navigator.clipboard.writeText(control.val())
+            .then(function () {
+
+                self.showToast("Copied Successfully");
+
+            })
+            .catch(function () {
+
+                self.showToast("Copy Failed");
+
+            });
+
+    },
+
     clearHistory: function () {
 
-        this.state.historyCount = 0;
+        this.controls.history.empty();
+
+        this.controls.logs.empty();
 
         this.state.txCount = 0;
 
         this.state.rxCount = 0;
 
-        this.controls.history.empty();
-
-        this.controls.logs.empty();
+        this.state.lastResponse = "";
 
         this.controls.tx.text("0");
 
@@ -642,7 +696,7 @@ var SocketClient = {
 
             $(this).find("th,td").each(function () {
 
-                row.push($(this).text());
+                row.push($(this).text().replace(/,/g, " "));
 
             });
 
@@ -651,7 +705,7 @@ var SocketClient = {
         });
 
         var blob = new Blob(
-            [csv.join("\n")],
+            [csv.join("\r\n")],
             { type: "text/csv;charset=utf-8;" });
 
         var link = document.createElement("a");
@@ -668,6 +722,16 @@ var SocketClient = {
 
     },
 
+    autoScroll: function () {
+
+        if (this.controls.request.length > 0)
+            this.controls.request.scrollTop(this.controls.request[0].scrollHeight);
+
+        if (this.controls.response.length > 0)
+            this.controls.response.scrollTop(this.controls.response[0].scrollHeight);
+
+    },
+
     htmlEncode: function (value) {
 
         if (value == null)
@@ -679,579 +743,8 @@ var SocketClient = {
 
 };
 
-$(document).ready(function () {
+$(function () {
 
     SocketClient.init();
 
 });
-
-/*var SocketClient = (function () {
-
-    var page = {
-
-        isConnected: false,
-
-        txCount: 0,
-
-        rxCount: 0
-
-    };
-
-
-    function init() {
-
-        registerEvents();
-
-        resetScreen();
-
-        checkConnection();
-
-        console.log("Socket Client Loaded");
-
-    }
-
-    function registerEvents() {
-
-        $("#btnConnect").click(connectServer);
-
-        $("#btnDisconnect").click(disconnectServer);
-
-        $("#btnSend").click(sendMessage);
-
-        $("#btnClear").click(clearScreen);
-
-    }
-
-    function connectServer() {
-
-        showLoading();
-
-        $.ajax({
-
-            url: "/SocketClient/Connect",
-
-            type: "POST",
-
-            dataType: "json",
-
-            data: {
-
-                HostAddress: $("#txtServer").val(),
-
-                HostPort: $("#txtPort").val()
-
-            },
-
-            success: function (result) {
-
-                hideLoading();
-
-                if (result.Success) {
-
-                    page.isConnected = true;
-
-                    updateStatus("Connected");
-
-                    $("#txtConnectionStatus").val(result.ConnectionStatus);
-
-                    $("#lblLastActivity").text(result.TimeStamp);
-
-                    showToast(result.SuccessMessage);
-
-                }
-                else {
-
-                    updateStatus("Disconnected");
-
-                    showToast(result.SuccessMessage);
-
-                }
-
-            },
-
-            error: function (xhr) {
-
-                hideLoading();
-
-                updateStatus("Disconnected");
-
-                alert(xhr.responseText);
-
-            }
-
-        });
-
-    }
-
-
-    function checkConnection() {
-
-        $.ajax({
-
-            url: "/SocketClient/GetConnectionStatus",
-
-            type: "GET",
-
-            success: function (result) {
-
-                if (result.ConnectionStatus === "Connected") {
-
-                    page.isConnected = true;
-
-                    updateStatus("Connected");
-
-                }
-                else {
-
-                    updateStatus("Disconnected");
-
-                }
-
-            }
-
-        });
-
-    }
-
-
-    function updateStatus(status) {
-
-        $("#lblStatus").text(status);
-
-        $("#txtConnectionStatus").val(status);
-
-        if (status === "Connected") {
-
-            $("#lblStatus")
-                .removeClass("text-danger")
-                .addClass("text-success");
-
-        }
-        else {
-
-            $("#lblStatus")
-                .removeClass("text-success")
-                .addClass("text-danger");
-
-        }
-
-    }
-
-    function resetScreen() {
-
-        page.txCount = 0;
-
-        page.rxCount = 0;
-
-        $("#lblTxCount").text("0");
-
-        $("#lblRxCount").text("0");
-
-        $("#txtResponse").val("");
-
-        $("#txtConnectionStatus").val("Disconnected");
-
-    }
-    function clearScreen() {
-
-        $("#txtRequest").val("");
-
-        $("#txtResponse").val("");
-
-        $("#tblHistory tbody").empty();
-
-        $("#tblLogs tbody").empty();
-
-        resetScreen();
-
-    }
-
-
-    function showLoading() {
-
-        $("#loadingPanel").show();
-
-    }
-
-    function hideLoading() {
-
-        $("#loadingPanel").hide();
-
-    }
-
-    function showToast(message) {
-
-        $("#copyToast span").text(message);
-
-        $("#copyToast")
-            .stop(true, true)
-            .fadeIn(300)
-            .delay(2000)
-            .fadeOut(400);
-
-    }
-
-
-    return {
-
-        init: init
-
-    };
-
-})();
-
-$(document).ready(function () {
-
-    SocketClient.init();
-
-});
-
-function sendMessage() {
-
-    if (!page.isConnected) {
-
-        showToast("Please connect to server first.");
-
-        return;
-    }
-
-    var message = $("#txtRequest").val();
-
-    if ($.trim(message) === "") {
-
-        showToast("Please enter request message.");
-
-        return;
-    }
-
-    showLoading();
-
-    $.ajax({
-
-        url: "/SocketClient/Send",
-
-        type: "POST",
-
-        dataType: "json",
-
-        data: {
-
-            HostMessage: message
-
-        },
-
-        success: function (result) {
-
-            hideLoading();
-
-            if (result.Success) {
-
-                page.txCount++;
-
-                page.rxCount++;
-
-                $("#lblTxCount").text(page.txCount);
-
-                $("#lblRxCount").text(page.rxCount);
-
-                $("#txtResponse").val(result.ResponseData);
-
-                $("#lblLastActivity").text(result.TimeStamp);
-
-                appendHistory(
-                    "TX",
-                    result.TimeStamp,
-                    "Success",
-                    message);
-
-                appendHistory(
-                    "RX",
-                    result.TimeStamp,
-                    "Success",
-                    result.ResponseData);
-
-                appendLog(
-                    result.TimeStamp,
-                    "Request",
-                    message);
-
-                appendLog(
-                    result.TimeStamp,
-                    "Response",
-                    result.ResponseData);
-
-                autoScroll();
-
-                showToast(result.SuccessMessage);
-
-            }
-            else {
-
-                showToast(result.SuccessMessage);
-
-            }
-
-        },
-
-        error: function (xhr) {
-
-            hideLoading();
-
-            alert(xhr.responseText);
-
-        }
-
-    });
-
-}
-
-
-function autoScroll() {
-
-    var tx = $("#txtRequest");
-
-    var rx = $("#txtResponse");
-
-    tx.scrollTop(tx[0].scrollHeight);
-
-    rx.scrollTop(rx[0].scrollHeight);
-
-}
-
-
-function appendHistory(direction,
-    time,
-    status,
-    message) {
-
-    var row = "";
-
-    row += "<tr>";
-
-    row += "<td>" + ($("#tblHistory tbody tr").length + 1) + "</td>";
-
-    row += "<td>" + time + "</td>";
-
-    row += "<td>" + direction + "</td>";
-
-    row += "<td>" + status + "</td>";
-
-    row += "<td>" + htmlEncode(message) + "</td>";
-
-    row += "<td>" + message.length + "</td>";
-
-    row += "</tr>";
-
-    $("#tblHistory tbody").append(row);
-
-}
-
-function appendLog(time,
-    type,
-    message) {
-
-    var row = "";
-
-    row += "<tr>";
-
-    row += "<td>" + ($("#tblLogs tbody tr").length + 1) + "</td>";
-
-    row += "<td>" + time + "</td>";
-
-    row += "<td>" + type + "</td>";
-
-    row += "<td>Completed</td>";
-
-    row += "<td>" + htmlEncode(message) + "</td>";
-
-    row += "</tr>";
-
-    $("#tblLogs tbody").append(row);
-
-}
-
-function htmlEncode(value) {
-
-    return $("<div/>").text(value).html();
-
-}
-
-function disconnectServer() {
-
-    if (!page.isConnected) {
-
-        showToast("Already disconnected.");
-
-        return;
-    }
-
-    showLoading();
-
-    $.ajax({
-
-        url: "/SocketClient/Disconnect",
-
-        type: "POST",
-
-        dataType: "json",
-
-        success: function (result) {
-
-            hideLoading();
-
-            page.isConnected = false;
-
-            $("#lblStatus")
-                .removeClass("text-success")
-                .addClass("text-danger")
-                .text("Disconnected");
-
-            $("#txtConnectionStatus")
-                .val("Disconnected");
-
-            $("#lblLastActivity")
-                .text(result.TimeStamp);
-
-            showToast(result.SuccessMessage);
-
-        },
-
-        error: function (xhr) {
-
-            hideLoading();
-
-            alert(xhr.responseText);
-
-        }
-
-    });
-
-}
-
-
-
-$("#btnCopyTx").click(function () {
-
-    navigator.clipboard.writeText($("#txtRequest").val());
-
-    showToast("Request copied.");
-
-});
-
-
-$("#btnCopyRx").click(function () {
-
-    navigator.clipboard.writeText($("#txtResponse").val());
-
-    showToast("Response copied.");
-
-});
-
-
-function scrollResponse() {
-
-    var txt = $("#txtResponse");
-
-    txt.scrollTop(txt[0].scrollHeight);
-
-}
-
-
-$("#txtSearchLog").keyup(function () {
-
-    var value = $(this).val().toLowerCase();
-
-    $("#tblLogs tbody tr").filter(function () {
-
-        $(this).toggle(
-            $(this).text().toLowerCase().indexOf(value) > -1
-        );
-
-    });
-
-});
-
-
-
-$("#btnExport").click(function () {
-
-    var csv = [];
-
-    $("#tblHistory tr").each(function () {
-
-        var row = [];
-
-        $(this).find("th,td").each(function () {
-
-            row.push($(this).text());
-
-        });
-
-        csv.push(row.join(","));
-
-    });
-
-    var blob = new Blob([csv.join("\n")],
-        { type: "text/csv;charset=utf-8;" });
-
-    var link = document.createElement("a");
-
-    link.href = URL.createObjectURL(blob);
-
-    link.download = "SocketHistory.csv";
-
-    link.click();
-
-});
-
-$("#btnClearHistory").click(function () {
-
-    $("#tblHistory tbody").empty();
-
-    $("#tblLogs tbody").empty();
-
-    page.txCount = 0;
-    page.rxCount = 0;
-
-    $("#lblTxCount").text("0");
-
-    $("#lblRxCount").text("0");
-
-    showToast("History cleared.");
-
-});
-
-function formatDate(date) {
-
-    return new Date(date).toLocaleString();
-
-}
-
-function updateActivity() {
-
-    $("#lblLastActivity")
-        .text(formatDate(new Date()));
-
-}
-
-function setConnected(flag) {
-
-    page.isConnected = flag;
-
-}
-
-function incrementTx() {
-
-    page.txCount++;
-
-    $("#lblTxCount").text(page.txCount);
-
-}
-
-function incrementRx() {
-
-    page.rxCount++;
-
-    $("#lblRxCount").text(page.rxCount);
-
-}*/
