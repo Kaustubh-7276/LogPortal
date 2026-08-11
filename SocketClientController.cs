@@ -106,17 +106,18 @@ namespace BancsEventsLogger.Controllers
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("SEND COOKIE: " + Request.Cookies["ASP.NET_SessionId"]?.Value.ToString());
+                System.Diagnostics.Debug.WriteLine("========================================================================");
                 System.Diagnostics.Debug.WriteLine("Send SessionID: " + Session.SessionID);
-                if (CurrentConnection.ClientSocket != null)
+                System.Diagnostics.Debug.WriteLine("Send Socket Null : " + (CurrentConnection.ClientSocket == null));
+                System.Diagnostics.Debug.WriteLine("Socket IsConnected Flag : " + CurrentConnection.IsConnected);
+                System.Diagnostics.Debug.WriteLine("SEND HASH: " + (CurrentConnection.ClientSocket == null ? "Null" : CurrentConnection.ClientSocket.GetHashCode().ToString()));
+                System.Diagnostics.Debug.WriteLine("Send Connection_Count: " + _connections.Count);
+                foreach (var key in _connections.Keys)
                 {
-                    System.Diagnostics.Debug.WriteLine("Connect Socket Hash: " + CurrentConnection.ClientSocket.GetHashCode());
+                    System.Diagnostics.Debug.WriteLine("Stored Key: " + key);
                 }
-                System.Diagnostics.Debug.WriteLine("Socket Connected : " + CurrentConnection.IsConnected);
-                return Json(new
-                {
-                    SocketNull = CurrentConnection.ClientSocket == null,
-                    IsConnectedFlag = CurrentConnection.IsConnected
-                });
+                System.Diagnostics.Debug.WriteLine("========================================================================");
                 if (!IsConnected())
                     return Json(BuildResponse(false, "Socket is not connected."));
 
@@ -207,8 +208,14 @@ namespace BancsEventsLogger.Controllers
 
                 CurrentConnection.ClientSocket = socket;
                 CurrentConnection.IsConnected = true;
-                System.Diagnostics.Debug.WriteLine("Connect SessionID: " + Session.SessionID);
-                System.Diagnostics.Debug.WriteLine("Socket Hash: " + socket.GetHashCode());
+                System.Diagnostics.Debug.WriteLine("=============================================================");
+                System.Diagnostics.Debug.WriteLine("Connected Seesion ID: " + Session.SessionID);
+                System.Diagnostics.Debug.WriteLine("Connected STORED Hash: " + socket.GetHashCode());
+                System.Diagnostics.Debug.WriteLine("Connected Is Socket Connected? : " + socket.Connected);
+                System.Diagnostics.Debug.WriteLine("Connected IsConnected flag? : " + CurrentConnection.IsConnected);
+                System.Diagnostics.Debug.WriteLine("Connect COOKIE: " + Request.Cookies["ASP.NET_SessionId"]?.Value.ToString());
+                System.Diagnostics.Debug.WriteLine("Connect Connection_Count: " + _connections.Count);
+                System.Diagnostics.Debug.WriteLine("=============================================================");
                 CurrentConnection.TxCount = 0;
                 CurrentConnection.RxCount = 0;
                 CurrentConnection.LastRequest = string.Empty;
@@ -415,6 +422,7 @@ namespace BancsEventsLogger.Controllers
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("**************** CLOSE CONNECTION IS CALLED ******************");
                 if (CurrentConnection.ClientSocket != null)
                 {
                     try
