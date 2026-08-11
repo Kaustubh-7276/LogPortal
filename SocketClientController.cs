@@ -1,5 +1,6 @@
 using BancsEventsLogger.Models;
 using System;
+using System.Collections.Concurrent;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -10,156 +11,238 @@ namespace BancsEventsLogger.Controllers
 {
     public class SocketClientController : Controller
     {
-        #region Socket Members
+        #region Connection Store
 
-        private static Socket _clientSocket;
+        private static readonly ConcurrentDictionary<string, SocketConnection>
+            _connections =
+                new ConcurrentDictionary<string, SocketConnection>();
 
-        private static NetworkStream _networkStream;
-
-        private static StreamWriter _writer;
-
-        private static readonly byte[] _buffer = new byte[4096];
-
-        private static AsyncCallback _receiveCallback;
-
-        private static readonly object _lock = new object();
-
-        #endregion
-
-        #region Runtime State
-
-        private static bool _isConnected;
-
-        private static string _latestResponse = String.Empty;
-
-        private static string _lastRequest = String.Empty;
-
-        private static int _txCount;
-
-        private static int _rxCount;
-
-        private static DateTime? _lastActivity;
+        private SocketConnection CurrentConnection
+        {
+            get
+            {
+                return _connections.GetOrAdd(
+                    Session.SessionID,
+                    id => new SocketConnection());
+            }
+        }
 
         #endregion
+
+        #region View
+
         public ActionResult SocketClient()
         {
             return View();
         }
 
+        #endregion
+
+        #region Helper Methods
+
+        /*private bool IsConnected()
+        {
+            return CurrentConnection.ClientSocket != null &&
+                   CurrentConnection.ClientSocket.Connected &&
+                   CurrentConnection.IsConnected;
+        }*/
+
         private bool IsConnected()
         {
-            return _clientSocket != null
-              && _clientSocket.Connected
-              && _isConnected;
+            return CurrentConnection.ClientSocket != null && CurrentConnection.IsConnected;
         }
 
-        private SocketResponseModel BuildResponse(bool success, string message, string response = "")
+        private SocketResponseModel BuildResponse(
+            bool success,
+            string message,
+            string response = "")
         {
             return new SocketResponseModel
             {
                 Success = success,
+
                 SuccessMessage = message,
+
                 ResponseData = response,
-                ConnectionStatus = IsConnected()
-                ? "Connected"
-                : "Disconnected",
+
+                ConnectionStatus =
+                    IsConnected()
+                        ? "Connected"
+                        : "Disconnected",
+
                 TimeStamp = DateTime.Now
-                .ToString("dd-MMM-yyyy HH:mm:ss")
+                    .ToString("dd-MMM-yyyy HH:mm:ss")
             };
         }
 
+        private SocketStateModel BuildState()
+        {
+            return new SocketStateModel
+            {
+                IsConnected = IsConnected(),
+
+                ServerIP = string.Empty,
+
+                Port = 0,
+
+                TxCount = CurrentConnection.TxCount,
+
+                RxCount = CurrentConnection.RxCount,
+
+                LastRequest = CurrentConnection.LastRequest,
+
+                LastResponse = CurrentConnection.LastResponse,
+
+                LastActivity = CurrentConnection.LastActivity
+            };
+        }
+
+        #endregion
+
+        #region Send
+
+        [HttpPost]
+        public JsonResult Send(SocketRequestModel model)
+        {
+            try
+            {
+                System.Diagnostics.Debug.WriteLine("Send SessionID: " + Session.SessionID);
+                if (CurrentConnection.ClientSocket != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("Connect Socket Hash: " + CurrentConnection.ClientSocket.GetHashCode());
+                }
+                System.Diagnostics.Debug.WriteLine("Socket Connected : " + CurrentConnection.IsConnected);
+                return Json(new
+                {
+                    SocketNull = CurrentConnection.ClientSocket == null,
+                    IsConnectedFlag = CurrentConnection.IsConnected
+                });
+                if (!IsConnected())
+                    return Json(BuildResponse(false, "Socket is not connected."));
+
+                if (model == null)
+                    return Json(BuildResponse(false, "Invalid request."));
+
+                if (string.IsNullOrWhiteSpace(model.HostMessage))
+                    return Json(BuildResponse(false, "Request message cannot be empty."));
+
+                Socket socket = CurrentConnection.ClientSocket;
+
+                NetworkStream networkStream = new NetworkStream(socket, false);
+
+                StreamWriter writer = new StreamWriter(networkStream, Encoding.ASCII);
+
+                writer.AutoFlush = true;
+
+                writer.WriteLine(model.HostMessage);
+
+                writer.Flush();
+
+                CurrentConnection.LastRequest = model.HostMessage;
+                CurrentConnection.TxCount++;
+                CurrentConnection.LastActivity = DateTime.Now;
+
+                return Json(new SocketResponseModel
+                {
+                    Success = true,
+                    SuccessMessage = "Request sent successfully.",
+                    ConnectionStatus = "Connected",
+                    TimeStamp = DateTime.Now.ToString("dd-MMM-yyyy HH:mm:ss")
+                });
+            }
+            catch (SocketException ex)
+            {
+                CloseConnection();
+                return Json(BuildResponse(false, ex.Message));
+            }
+            catch (Exception ex)
+            {
+                CloseConnection();
+                return Json(BuildResponse(false, ex.Message));
+            }
+        }
+
+        #endregion
 
         #region Connect
 
         [HttpPost]
         public JsonResult Connect(SocketRequestModel model)
         {
-            lock (_lock)
+            try
             {
-                try
+                if (model == null)
+                    return Json(BuildResponse(false, "Invalid request."));
+
+                if (string.IsNullOrWhiteSpace(model.HostAddress))
+                    return Json(BuildResponse(false, "Server IP Address is required."));
+
+                if (model.HostPort <= 0)
+                    return Json(BuildResponse(false, "Invalid Port Number."));
+
+                if (IsConnected())
+                    return Json(BuildResponse(true, "Already Connected."));
+
+                IPAddress ipAddress;
+
+                if (!IPAddress.TryParse(model.HostAddress, out ipAddress))
+                    return Json(BuildResponse(false, "Invalid IP Address."));
+
+                Socket socket = new Socket(
+                  AddressFamily.InterNetwork,
+                  SocketType.Stream,
+                  ProtocolType.Tcp);
+
+                socket.NoDelay = true;
+                socket.SendTimeout = 30000;
+                socket.ReceiveTimeout = 30000;
+
+                socket.Connect(new IPEndPoint(ipAddress, model.HostPort));
+
+                if (!socket.Connected)
                 {
-                    if (model == null)
-                        return Json(BuildResponse(false, "Invalid request."));
-
-                    if (String.IsNullOrWhiteSpace(model.HostAddress))
-                        return Json(BuildResponse(false, "Server IP Address is required."));
-
-                    if (model.HostPort <= 0)
-                        return Json(BuildResponse(false, "Invalid Port Number."));
-
-                    if (IsConnected())
-                        return Json(BuildResponse(true, "Already Connected."));
-
-                    _clientSocket = new Socket(
-                      AddressFamily.InterNetwork,
-                      SocketType.Stream,
-                      ProtocolType.Tcp);
-
-                    _clientSocket.ReceiveTimeout = 30000;
-                    _clientSocket.SendTimeout = 30000;
-
-                    IPAddress ipAddress;
-
-                    if (!IPAddress.TryParse(model.HostAddress, out ipAddress))
-                        return Json(BuildResponse(false, "Invalid IP Address."));
-
-                    IPEndPoint endPoint =
-                      new IPEndPoint(ipAddress, model.HostPort);
-
-                    _clientSocket.Connect(endPoint);
-
-                    if (!_clientSocket.Connected)
-                        return Json(BuildResponse(false,
-                          "Unable to connect to server."));
-
-                    _networkStream =
-                      new NetworkStream(_clientSocket, false);
-
-                    _writer =
-                      new StreamWriter(_networkStream, Encoding.UTF8);
-
-                    _writer.AutoFlush = true;
-
-                    _latestResponse = String.Empty;
-
-                    _lastRequest = String.Empty;
-
-                    _txCount = 0;
-
-                    _rxCount = 0;
-
-                    _lastActivity = DateTime.Now;
-
-                    _isConnected = true;
-
-                    WaitForData();
-
-                    return Json(BuildResponse(
-                      true,
-                      "Connected Successfully."));
+                    socket.Dispose();
+                    return Json(BuildResponse(false, "Unable to connect to server."));
                 }
-                catch (SocketException ex)
+
+                CurrentConnection.ClientSocket = socket;
+                CurrentConnection.IsConnected = true;
+                System.Diagnostics.Debug.WriteLine("Connect SessionID: " + Session.SessionID);
+                System.Diagnostics.Debug.WriteLine("Socket Hash: " + socket.GetHashCode());
+                CurrentConnection.TxCount = 0;
+                CurrentConnection.RxCount = 0;
+                CurrentConnection.LastRequest = string.Empty;
+                CurrentConnection.LastResponse = string.Empty;
+                CurrentConnection.LastActivity = DateTime.Now;
+
+                // Start asynchronous receive
+                WaitForData();
+
+                return Json(new SocketResponseModel
                 {
-                    CloseConnection();
+                    Success = true,
+                    SuccessMessage = "Connected Successfully.",
+                    ConnectionStatus = "Connected",
+                    TimeStamp = DateTime.Now.ToString("dd-MMM-yyyy HH:mm:ss")
+                });
+            }
+            catch (SocketException ex)
+            {
+                CloseConnection();
 
-                    return Json(BuildResponse(
-                      false,
-                      ex.Message));
-                }
-                catch (Exception ex)
-                {
-                    CloseConnection();
+                return Json(BuildResponse(false, ex.Message));
+            }
+            catch (Exception ex)
+            {
+                CloseConnection();
 
-                    return Json(BuildResponse(
-                      false,
-                      ex.Message));
-                }
+                return Json(BuildResponse(false, ex.Message));
             }
         }
 
         #endregion
 
-        #region Wait For Data
+        #region WaitForData
 
         private void WaitForData()
         {
@@ -168,65 +251,31 @@ namespace BancsEventsLogger.Controllers
                 if (!IsConnected())
                     return;
 
-                if (_receiveCallback == null)
-                    _receiveCallback =
+                if (CurrentConnection.ReceiveCallback == null)
+                {
+                    CurrentConnection.ReceiveCallback =
                       new AsyncCallback(OnDataReceived);
+                }
 
-                _clientSocket.BeginReceive(
-                  _buffer,
+                SocketPacket packet = new SocketPacket();
+
+                packet.ThisSocket = CurrentConnection.ClientSocket;
+
+                packet.Connection = CurrentConnection;
+
+                packet.ThisSocket.BeginReceive(
+                  packet.DataBuffer,
                   0,
-                  _buffer.Length,
+                  packet.DataBuffer.Length,
                   SocketFlags.None,
-                  _receiveCallback,
-                  null);
-            }
-            catch
-            {
-                CloseConnection();
-            }
-        }
-
-        #endregion
-
-        #region Receive Callback
-
-        private void OnDataReceived(IAsyncResult ar)
-        {
-            try
-            {
-                if (!IsConnected())
-                    return;
-
-                int bytesRead = _clientSocket.EndReceive(ar);
-
-                if (bytesRead <= 0)
-                {
-                    CloseConnection();
-                    return;
-                }
-
-                string response =
-                  Encoding.UTF8.GetString(
-                    _buffer,
-                    0,
-                    bytesRead);
-
-                lock (_lock)
-                {
-                    _latestResponse = response;
-
-                    _rxCount++;
-
-                    _lastActivity = DateTime.Now;
-                }
-
-                WaitForData();
-            }
-            catch (ObjectDisposedException)
-            {
-                CloseConnection();
+                  CurrentConnection.ReceiveCallback,
+                  packet);
             }
             catch (SocketException)
+            {
+                CloseConnection();
+            }
+            catch (ObjectDisposedException)
             {
                 CloseConnection();
             }
@@ -238,107 +287,98 @@ namespace BancsEventsLogger.Controllers
 
         #endregion
 
-        #region Send
+        #region OnDataReceived
 
-        [HttpPost]
-        public JsonResult Send(SocketRequestModel model)
+        private void OnDataReceived(IAsyncResult ar)
         {
-            lock (_lock)
+            SocketPacket packet = null;
+
+            try
             {
-                try
-                {
-                    if (!IsConnected())
-                        return Json(BuildResponse(false,
-                          "Socket is not connected."));
+                packet = (SocketPacket)ar.AsyncState;
 
-                    if (model == null)
-                        return Json(BuildResponse(false,
-                          "Invalid Request."));
+                if (packet == null || packet.ThisSocket == null)
+                    return;
 
-                    if (String.IsNullOrWhiteSpace(model.HostMessage))
-                        return Json(BuildResponse(false,
-                          "Request message cannot be empty."));
+                int bytesRead = packet.ThisSocket.EndReceive(ar);
 
-                    _writer.WriteLine(model.HostMessage);
-
-                    _writer.Flush();
-
-                    _lastRequest = model.HostMessage;
-
-                    _txCount++;
-
-                    _lastActivity = DateTime.Now;
-
-                    return Json(new SocketResponseModel
-                    {
-                        Success = true,
-                        SuccessMessage = "Request sent successfully.",
-                        ConnectionStatus = "Connected",
-                        TimeStamp = DateTime.Now
-                        .ToString("dd-MMM-yyyy HH:mm:ss")
-                    });
-                }
-                catch (Exception ex)
+                if (bytesRead <= 0)
                 {
                     CloseConnection();
-
-                    return Json(BuildResponse(false,
-                      ex.Message));
+                    return;
                 }
+
+                string response =
+                    Encoding.ASCII.GetString(
+                        packet.DataBuffer,
+                        0,
+                        bytesRead);
+
+                packet.Connection.LastResponse = response;
+
+                packet.Connection.RxCount++;
+
+                packet.Connection.LastActivity = DateTime.Now;
+
+                // Continue listening for next response
+                WaitForData();
+            }
+            catch (ObjectDisposedException)
+            {
+                CloseConnection();
+            }
+            catch (SocketException)
+            {
+                CloseConnection();
+            }
+            catch (Exception ex)
+            {
+                if (packet != null && packet.Connection != null)
+                {
+                    packet.Connection.LastResponse =
+                        "ERROR : " + ex.Message;
+                }
+
+                CloseConnection();
             }
         }
 
         #endregion
 
-        #region Close Connection
+        #region GetLatestResponse
 
-        private void CloseConnection()
+        [HttpGet]
+        public JsonResult GetLatestResponse()
         {
             try
             {
-                _isConnected = false;
+                string response = CurrentConnection.LastResponse;
 
-                if (_writer != null)
+                if (!string.IsNullOrEmpty(response))
                 {
-                    _writer.Dispose();
-                    _writer = null;
+                    CurrentConnection.LastResponse = string.Empty;
                 }
 
-                if (_networkStream != null)
-                {
-                    _networkStream.Dispose();
-                    _networkStream = null;
-                }
+                return Json(
+                  new SocketResponseModel
+                  {
+                      Success = true,
+                      ResponseData = response,
+                      ConnectionStatus =
+                      IsConnected()
+                        ? "Connected"
+                        : "Disconnected",
 
-                if (_clientSocket != null)
-                {
-                    try
-                    {
-                        if (_clientSocket.Connected)
-                        {
-                            _clientSocket.Shutdown(SocketShutdown.Both);
-                        }
-                    }
-                    catch
-                    {
-                    }
-
-                    _clientSocket.Close();
-                    _clientSocket.Dispose();
-                    _clientSocket = null;
-                }
+                      TimeStamp = DateTime.Now
+                      .ToString("dd-MMM-yyyy HH:mm:ss")
+                  },
+                  JsonRequestBehavior.AllowGet);
             }
-            finally
+            catch (Exception ex)
             {
-                _latestResponse = String.Empty;
-
-                _lastRequest = String.Empty;
-
-                _txCount = 0;
-
-                _rxCount = 0;
-
-                _lastActivity = null;
+                return Json(
+                  BuildResponse(false, ex.Message),
+                  JsonRequestBehavior.AllowGet);
             }
         }
 
@@ -353,80 +393,73 @@ namespace BancsEventsLogger.Controllers
             {
                 CloseConnection();
 
-                return Json(BuildResponse(
-                  true,
-                  "Disconnected Successfully."));
-            }
-            catch (Exception ex)
-            {
-                return Json(BuildResponse(false,
-                  ex.Message));
-            }
-        }
-
-        #endregion
-
-        #region Latest Response
-
-        [HttpGet]
-        public JsonResult GetLatestResponse()
-        {
-            lock (_lock)
-            {
                 return Json(new SocketResponseModel
                 {
                     Success = true,
-
-                    ResponseData = _latestResponse,
-
-                    ConnectionStatus =
-                    IsConnected()
-                      ? "Connected"
-                      : "Disconnected",
-
-                    TimeStamp = _lastActivity.HasValue
-                    ? _lastActivity.Value.ToString("dd-MMM-yyyy HH:mm:ss")
-                    : ""
-                },
-                JsonRequestBehavior.AllowGet);
+                    SuccessMessage = "Disconnected successfully.",
+                    ConnectionStatus = "Disconnected",
+                    TimeStamp = DateTime.Now.ToString("dd-MMM-yyyy HH:mm:ss")
+                });
+            }
+            catch (Exception ex)
+            {
+                return Json(BuildResponse(false, ex.Message));
             }
         }
 
         #endregion
 
-        #region Connection Status
+        #region CloseConnection
 
-        [HttpGet]
-        public JsonResult GetConnectionStatus()
+        private void CloseConnection()
         {
-            return Json(new SocketResponseModel
+            try
             {
-                Success = true,
+                if (CurrentConnection.ClientSocket != null)
+                {
+                    try
+                    {
+                        if (CurrentConnection.ClientSocket.Connected)
+                        {
+                            CurrentConnection.ClientSocket.Shutdown(
+                                SocketShutdown.Both);
+                        }
+                    }
+                    catch
+                    {
+                        // Ignore shutdown errors
+                    }
 
-                ConnectionStatus =
-                IsConnected()
-                  ? "Connected"
-                  : "Disconnected",
+                    try
+                    {
+                        CurrentConnection.ClientSocket.Close();
+                    }
+                    catch
+                    {
+                    }
 
-                TimeStamp = DateTime.Now
-                .ToString("dd-MMM-yyyy HH:mm:ss")
-            },
-            JsonRequestBehavior.AllowGet);
-        }
+                    try
+                    {
+                        CurrentConnection.ClientSocket.Dispose();
+                    }
+                    catch
+                    {
+                    }
+                }
 
-        #endregion
-
-        #region Ping
-
-        [HttpGet]
-        public JsonResult Ping()
-        {
-            return Json(BuildResponse(
-              IsConnected(),
-              IsConnected()
-                ? "Socket Connected."
-                : "Socket Disconnected."),
-              JsonRequestBehavior.AllowGet);
+                CurrentConnection.ClientSocket = null;
+                CurrentConnection.IsConnected = false;
+                CurrentConnection.TxCount = 0;
+                CurrentConnection.RxCount = 0;
+                CurrentConnection.LastRequest = string.Empty;
+                CurrentConnection.LastResponse = string.Empty;
+                CurrentConnection.LastActivity = null;
+                CurrentConnection.ReceiveCallback = null;
+            }
+            catch
+            {
+                // Ignore cleanup exceptions
+            }
         }
 
         #endregion
