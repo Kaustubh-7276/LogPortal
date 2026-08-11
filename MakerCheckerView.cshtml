@@ -1,0 +1,266 @@
+@model IEnumerable<BancsEventsLogger.Models.TransactionModel>
+
+@{ ViewBag.Title = "Maker-Checker Updates"; }
+
+<style>
+    .action-tile-container {
+        display: flex;
+        gap: 20px;
+        margin-bottom: 25px;
+    }
+
+    .action-tile {
+        flex: 1;
+        background: #fff;
+        padding: 20px;
+        border-radius: 12px;
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        border: 1px solid #ddd;
+        border-left: 6px solid var(--yono-blue);
+        transition: transform 0.2s;
+    }
+
+        .action-tile:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 15px rgba(0,0,0,0.1);
+        }
+
+    .tile-purple {
+        border-left-color: var(--yono-purple);
+    }
+
+    .data-card {
+        background: #fff;
+        border-radius: 12px;
+        border: none;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+
+    .table thead {
+        background: #f8f9fa;
+        color: var(--yono-blue);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+    }
+
+    /* Style for the search filter input */
+    .search-filter-container {
+        width: 300px;
+    }
+</style>
+
+<div class="container-fluid">
+    <!-- Action Tiles -->
+    <div class="action-tile-container">
+        <div class="action-tile" onclick="openModal('MARK')">
+            <div class="tile-icon text-primary" style="margin-right:15px; font-size:1.5rem;"><span class="glyphicon glyphicon-ok-sign"></span></div>
+            <div>
+                <h5 class="m-0 fw-bold" style="color:var(--yono-blue)">Enable Maker-Checker</h5>
+                <small class="text-muted">Activate authorization workflow for the selected transaction</small>
+            </div>
+        </div>
+        <div class="action-tile tile-purple" onclick="openModal('REMOVE')">
+            <div class="tile-icon text-purple" style="margin-right:15px; font-size:1.5rem; color:var(--yono-purple)"><span class="glyphicon glyphicon-remove-sign"></span></div>
+            <div>
+                <h5 class="m-0 fw-bold" style="color:var(--yono-purple)">Disable Maker-Checker</h5>
+                <small class="text-muted">Deactivate authorization workflow for the selected transaction</small>
+            </div>
+        </div>
+    </div>
+
+    <!-- Data Table Card -->
+    <div class="card data-card">
+        <div class="card-header bg-white py-3 d-flex justify-content-between align-items-center border-0">
+            <h6 class="fw-bold m-0 text-uppercase" style="letter-spacing:1px">Master Transactions List</h6>
+            <div class="search-filter-container">
+                <label>Select Avilable Non-Prod Region for filter</label>
+                <select id="cardRegions" class="form-control">
+                    <selected value="DEV">DEV: Development Region</selected>
+                    <option value="DEV">DEV: Development Region</option>
+                    <option value="V3">V3: SIT V3 Region</option>
+                    <option value="V4">V4: SIT V4 Region</option>
+                    <option value="WD">WD: SIT WD Region</option>
+                </select>
+            </div>
+            <!-- TRANSACTION COLUMN FILTER -->
+            <div class="search-filter-container">
+                <div class="input-group input-group-sm">
+                    <span class="input-group-addon"><i class="glyphicon glyphicon-search"></i></span>
+                    <input type="text" id="txnFilter" class="form-control" placeholder="Filter by Transaction ID..." onkeyup="filterTable()">
+                </div>
+            </div>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover align-middle mb-0" id="masterTable">
+                <thead>
+                    <tr>
+                        <th>TRANSACTION</th>
+                        <th>CAPABILITY</th>
+                        <th>TITLE</th>
+                        <th>FINANCIAL FLAG</th>
+                        <th>NO.OF.CHECKERS</th>
+                        <th>CHECKING_REQUIRED</th>
+                        <th>NO.OF.CHECKERS [CPC]</th>
+                        <th>CHECKING_REQUIRED [CPC]</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var item in Model)
+                    {
+                        <tr>
+                            <td class="fw-bold text-primary">@item.TXNNO</td>
+                            <td>@item.CAPABILITY</td>
+                            <td><small>@item.TITLE</small></td>
+                            <td>@item.ISFINANCIAL</td>
+                            <td>@item.NUMCHCKRS</td>
+                            <td>@item.CHECKINGREQD</td>
+                            <td>@item.CPC_NUMCHCKRS</td>
+                            <td>@item.CPC_CHECKINGREQD</td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal Structure -->
+<div class="modal fade" id="txnModal" tabindex="-1" style="background: rgba(0,0,0,0.5);">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header" style="background:var(--yono-grad); color:white;">
+                <h5 class="modal-title" id="mTitle">Process Transaction</h5>
+                <button type="button" class="close-modal-btn" onclick="closeModal()" style="background:none; border:none; color:white; font-size:1.5rem; line-height:1;">&times;</button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="actionType" />
+
+                <!-- Primary Field: Always Visible -->
+                <div class="form-group mb-3">
+                    <label class="small fw-bold">TXNNO (Transaction Number)</label>
+                    <input type="number" id="txtTxnNo" class="form-control" oninput="if(this.value.length > 6) this.value = this.value.slice(0,6);" />
+                </div>
+                <div class="form-group mb-3">
+                    <label class="small fw-bold">Select Non-Prod Environment</label>
+                    <select id="ddRegionSelection" class="form-control">
+                        <selected value="DEV">DEV: Development Region</selected>
+                        <option value="DEV">DEV: Development Region</option>
+                        <option value="V3">V3: SIT V3 Region</option>
+                        <option value="V4">V4: SIT V4 Region</option>
+                        <option value="WD">WD: SIT WD Region</option>
+                    </select>
+                </div>
+                <!-- Secondary Fields: Hidden initially, shown if record not found -->
+                <div id="extraFields" style="display:none; border-top:1px solid #eee; padding-top:15px;">
+                    <p class="text-danger fw-bold small"><i class="glyphicon glyphicon-info-sign"></i> Record not found. Please enter details to create:</p>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="small fw-bold">CAPABILITY</label>
+                            <input type="text" id="txtCap" class="form-control" value="04" />
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="small fw-bold">IS FINANCIAL?</label>
+                            <select id="ddlIsFin" class="form-control">
+                                <option value="0">0 - No</option>
+                                <option value="1">1 - Yes</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="small fw-bold">TITLE</label>
+                        <input type="text" id="txtTitle" class="form-control" value="AMEND CUSTOMER ACCOUNT PERSONAL DETAILS" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" onclick="closeModal()">Close</button>
+                <button type="button" onclick="submitProcess()" class="btn btn-primary" style="background:var(--yono-blue)">Execute Action</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const modal = document.getElementById('txnModal');
+
+    // Filter Table Column Logic
+    function filterTable() {
+        const input = document.getElementById("txnFilter");
+        const filter = input.value.toUpperCase();
+        const table = document.getElementById("masterTable");
+        const tr = table.getElementsByTagName("tr");
+
+        for (let i = 1; i < tr.length; i++) {
+            const td = tr[i].getElementsByTagName("td")[0]; // Filters by the first column (Transaction)
+            if (td) {
+                const txtValue = td.textContent || td.innerText;
+                tr[i].style.display = txtValue.toUpperCase().indexOf(filter) > -1 ? "" : "none";
+            }
+        }
+    }
+
+    function openModal(type) {
+        document.getElementById('actionType').value = type;
+        document.getElementById('mTitle').innerText = (type === 'MARK' ? 'Enable Maker-Checker' : 'Disable Maker-Checker');
+        document.getElementById('txtTxnNo').value = '';
+        document.getElementById('extraFields').style.display = 'none';
+
+        modal.style.display = 'block';
+        modal.classList.add('show');
+        document.body.classList.add('modal-open');
+    }
+
+    function closeModal() {
+        modal.style.display = 'none';
+        modal.classList.remove('show');
+        document.body.classList.remove('modal-open');
+    }
+
+    function submitProcess() {
+        const txn = document.getElementById('txtTxnNo').value;
+        if (!txn) { alert("Please enter TXNNO"); return; }
+
+        const payload = new URLSearchParams();
+        payload.append('txnNo', txn);
+        payload.append('actionType', document.getElementById('actionType').value);
+        /* Region Details */
+        payload.append('ddRegionSelection', document.getElementById('ddRegionSelection').value)
+        /* Region Details */
+        // Collect extra fields only if they are visible (meaning record was not found previously)
+        if(document.getElementById('extraFields').style.display !== 'none') {
+            payload.append('capability', document.getElementById('txtCap').value);
+            payload.append('title', document.getElementById('txtTitle').value);
+            payload.append('isFinancial', document.getElementById('ddlIsFin').value);
+        }
+
+        fetch('@Url.Action("ProcessTransaction", "MakerChecker")', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: payload
+        })
+        .then(r => {
+            if (!r.ok) throw new Error("Server response was not ok");
+            return r.json();
+        })
+        .then(res => {
+            if (res.notFound) {
+                // If record not found, reveal the insert fields
+                document.getElementById('extraFields').style.display = 'block';
+                alert(res.message);
+            } else {
+                // Success or other specific DB error
+                alert(res.message);
+                if(res.success) window.location.reload();
+            }
+        })
+        .catch(err => {
+            console.error("Error:", err);
+            alert("An error occurred. Check console for details.");
+        });
+    }
+</script>
