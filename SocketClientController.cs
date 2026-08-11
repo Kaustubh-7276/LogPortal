@@ -17,13 +17,23 @@ namespace BancsEventsLogger.Controllers
             _connections =
                 new ConcurrentDictionary<string, SocketConnection>();
 
-        private SocketConnection CurrentConnection
+        /*private SocketConnection CurrentConnection
         {
             get
             {
                 return _connections.GetOrAdd(
                     Session.SessionID,
                     id => new SocketConnection());
+            }
+        }*/
+
+        private SocketConnection CurrentConnection
+        {
+            get
+            {
+                return _connections.GetOrAdd(
+                  ConnectionKey,
+                  id => new SocketConnection());
             }
         }
 
@@ -116,6 +126,15 @@ namespace BancsEventsLogger.Controllers
                 foreach (var key in _connections.Keys)
                 {
                     System.Diagnostics.Debug.WriteLine("Stored Key: " + key);
+                }
+                System.Diagnostics.Debug.WriteLine(
+  "COOKIE COUNT : " + Request.Cookies.Count);
+
+                foreach (string key in Request.Cookies.AllKeys)
+                {
+                    System.Diagnostics.Debug.WriteLine(
+                      "COOKIE => " + key +
+                      " = " + Request.Cookies[key]?.Value);
                 }
                 System.Diagnostics.Debug.WriteLine("========================================================================");
                 if (!IsConnected())
@@ -359,6 +378,8 @@ namespace BancsEventsLogger.Controllers
         {
             try
             {
+                System.Diagnostics.Debug.WriteLine("Session Null= " + (Session == null));
+                System.Diagnostics.Debug.WriteLine("Session ID= " + (Session?.SessionID ?? "NULL"));
                 string response = CurrentConnection.LastResponse;
 
                 if (!string.IsNullOrEmpty(response))
@@ -472,5 +493,33 @@ namespace BancsEventsLogger.Controllers
 
         #endregion
 
+        /*private string ConnectionKey
+        {
+            get
+            {
+                if (Session["ConnectionKey"] == null)
+                {
+                    Session["ConnectionKey"] = Guid.NewGuid().ToString();
+                }
+
+                return Session["ConnectionKey"].ToString();
+            }
+        }*/
+
+        private string ConnectionKey
+        {
+            get
+            {
+                if (System.Web.HttpContext.Current?.Session == null)
+                {
+                    return string.Empty;
+                }
+                if (Session["ConnectionKey"] == null)
+                {
+                    Session["ConnectionKey"] = Guid.NewGuid().ToString();
+                }
+                return Convert.ToString(Session["ConnectionKey"]);
+            }
+        }
     }
 }
