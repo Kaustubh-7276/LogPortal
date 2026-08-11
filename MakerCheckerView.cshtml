@@ -48,6 +48,14 @@
     /* Style for the search filter input */
     .search-filter-container {
         width: 300px;
+        min-width: 250px;
+    }
+    .card-header{
+        display:flex;
+        align-items:flex-end;
+        justify-content:space-between;
+        flex-wrap:wrap;
+        gap:15px;
     }
 </style>
 
@@ -77,11 +85,11 @@
             <div class="search-filter-container">
                 <label>Select Avilable Non-Prod Region for filter</label>
                 <select id="cardRegions" class="form-control">
-                    <selected value="DEV">DEV: Development Region</selected>
-                    <option value="DEV">DEV: Development Region</option>
-                    <option value="V3">V3: SIT V3 Region</option>
-                    <option value="V4">V4: SIT V4 Region</option>
-                    <option value="WD">WD: SIT WD Region</option>
+                    <option value="">select</option>
+                    <option value="DEV" @(ViewBag.SelectedRegion == "DEV" ? "selected='selected'" : "")>DEV: Development Region</option>
+                    <option value="V3" @(ViewBag.SelectedRegion == "V3" ? "selected='selected'" : "")>V3: SIT V3 Region</option>
+                    <option value="V4" @(ViewBag.SelectedRegion == "V4" ? "selected='selected'" : "")>V4: SIT V4 Region</option>
+                    <option value="WD" @(ViewBag.SelectedRegion == "WD" ? "selected='selected'" : "")>WD: SIT WD Region</option>
                 </select>
             </div>
             <!-- TRANSACTION COLUMN FILTER -->
@@ -184,7 +192,10 @@
 
 <script>
     const modal = document.getElementById('txnModal');
-
+    document.getElementById('cardRegions').addEventListener('change', function () {
+        alert(this.value);
+        window.location.href = '/MakerChecker/Index?regionDetails=' + this.value;
+    })
     // Filter Table Column Logic
     function filterTable() {
         const input = document.getElementById("txnFilter");
