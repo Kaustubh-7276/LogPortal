@@ -1,0 +1,145 @@
+:root {
+    --yono-blue: #1c3a94;
+    --yono-grad: linear-gradient(135deg, #1c3a94 0%, #6c2a8d 100%);
+}
+
+.table-scroll {
+    flex: 1;
+    overflow-y: auto;
+    overflow-x: auto;
+    min-height: 0;
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+}
+
+.portal-card {
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    padding: 15px;
+    width: 100%;
+    border: 1px solid #e0e0e0;
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    overflow: hidden;
+}
+
+.btn-yono {
+    background: var(--yono-grad);
+    color: white !important;
+    border: none;
+    border-radius: 20px;
+    padding: 6px 20px;
+    font-weight: 500;
+}
+
+.btn-export {
+    background: #e9f7ef;
+    border: 1px solid #28a745;
+    color: #28a745;
+    border-radius: 20px;
+    padding: 6px 20px;
+}
+
+/* STICKY HEADER FIX: Preventing Overlap */
+#logTable {
+    table-layout: fixed;
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+    #logTable thead th {
+        position: sticky;
+        top: 0;
+        background: #ffffff !important; /* Solid white background */
+        z-index: 100;
+        border-bottom: 2px solid var(--yono-blue);
+        padding: 12px;
+        font-size: 0.85rem;
+        box-shadow: 0 2px 2px -1px rgba(0,0,0,0.1); /* Subtle shadow under header */
+    }
+
+    #logTable td {
+        vertical-align: top;
+        border-bottom: 1px solid #eee;
+        padding: 10px;
+        background: #fff;
+    }
+
+.btn-copy {
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 8px;
+    background: #eef2ff;
+    border: 1px solid var(--yono-blue);
+    color: var(--yono-blue);
+    float: right;
+    cursor: pointer;
+}
+
+.msg-display {
+    white-space: pre-wrap;
+    word-break: break-all;
+    font-family: 'Consolas', monospace;
+    font-size: 0.8rem;
+    background: #fdfdfd;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #f0f0f0;
+    margin-top: 35px;
+}
+
+.teller-badge {
+    color: var(--yono-blue);
+    font-weight: bold;
+    background: #eef2ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+
+.tranno-badge {
+    color: var(--yono-blue);
+    font-weight: bold;
+    background: #eef2ff;
+    padding: 2px 6px;
+    border-radius: 4px;
+}
+mark.highlight {
+    background-color: #ffeb3b; /* Bright Yellow */
+    color: #000;
+    padding: 0;
+    border-radius: 2px;
+    font-weight: bold;
+}
+
+.live-status {
+    background: #28a745;
+    color: #fff;
+    font-weight: 600;
+}
+
+.refresh-status {
+    background: #f8f9fa;
+    color: #333;
+    border: 1px solid #ddd;
+    font-weight: 600;
+}
+
+.copy-toast {
+    position: fixed;
+    top: 25px;
+    right: 25px;
+    background: linear-gradient(135deg,#1c3a94,#6c2a8d);
+    color: #fff;
+    padding: 15px 20px;
+    border-radius: 12px;
+    box-shadow: 0 10px 25px rgba(0,0,0,.3);
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 99999;
+    min-width: 280px;
+    font-family: 'Segoe UI';
+}
