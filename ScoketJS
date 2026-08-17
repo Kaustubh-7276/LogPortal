@@ -74,7 +74,6 @@ var SocketClient = {
 
         this.initializeScreen();
 
-        this.checkConnection();
 
     },
 
@@ -264,6 +263,10 @@ var SocketClient = {
 
             },
 
+            xhrFields: {
+                withCredentials: true
+            },
+
             success: function (result) {
 
                 self.hideLoading();
@@ -324,6 +327,10 @@ var SocketClient = {
 
             dataType: "json",
 
+            xhrFields: {
+                withCredentials: true
+            },
+
             success: function (result) {
 
                 self.hideLoading();
@@ -343,39 +350,6 @@ var SocketClient = {
                 self.showToast("Disconnect failed.");
 
                 console.log(xhr);
-
-            }
-
-        });
-
-    },
-
-    checkConnection: function () {
-
-        var self = this;
-
-        $.ajax({
-
-            url: "/SocketClient/GetConnectionStatus",
-
-            type: "GET",
-
-            dataType: "json",
-
-            success: function (result) {
-
-                if (result.ConnectionStatus === "Connected") {
-
-                    self.setConnection(true);
-
-                    self.startPolling();
-
-                }
-                else {
-
-                    self.setConnection(false);
-
-                }
 
             }
 
@@ -446,6 +420,10 @@ var SocketClient = {
 
                 HostMessage: request
 
+            },
+
+            xhrFields: {
+                withCredentials: true
             },
 
             success: function (result) {
@@ -540,6 +518,10 @@ var SocketClient = {
             type: "GET",
 
             dataType: "json",
+
+            xhrFields: {
+                withCredentials: true
+            },
 
             success: function (result) {
 
