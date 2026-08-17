@@ -17,15 +17,6 @@ namespace BancsEventsLogger.Controllers
             _connections =
                 new ConcurrentDictionary<string, SocketConnection>();
 
-        /*private SocketConnection CurrentConnection
-        {
-            get
-            {
-                return _connections.GetOrAdd(
-                    Session.SessionID,
-                    id => new SocketConnection());
-            }
-        }*/
 
         private SocketConnection CurrentConnection
         {
@@ -49,13 +40,6 @@ namespace BancsEventsLogger.Controllers
         #endregion
 
         #region Helper Methods
-
-        /*private bool IsConnected()
-        {
-            return CurrentConnection.ClientSocket != null &&
-                   CurrentConnection.ClientSocket.Connected &&
-                   CurrentConnection.IsConnected;
-        }*/
 
         private bool IsConnected()
         {
@@ -116,27 +100,6 @@ namespace BancsEventsLogger.Controllers
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("SEND COOKIE: " + Request.Cookies["ASP.NET_SessionId"]?.Value.ToString());
-                System.Diagnostics.Debug.WriteLine("========================================================================");
-                System.Diagnostics.Debug.WriteLine("Send SessionID: " + Session.SessionID);
-                System.Diagnostics.Debug.WriteLine("Send Socket Null : " + (CurrentConnection.ClientSocket == null));
-                System.Diagnostics.Debug.WriteLine("Socket IsConnected Flag : " + CurrentConnection.IsConnected);
-                System.Diagnostics.Debug.WriteLine("SEND HASH: " + (CurrentConnection.ClientSocket == null ? "Null" : CurrentConnection.ClientSocket.GetHashCode().ToString()));
-                System.Diagnostics.Debug.WriteLine("Send Connection_Count: " + _connections.Count);
-                foreach (var key in _connections.Keys)
-                {
-                    System.Diagnostics.Debug.WriteLine("Stored Key: " + key);
-                }
-                System.Diagnostics.Debug.WriteLine(
-  "COOKIE COUNT : " + Request.Cookies.Count);
-
-                foreach (string key in Request.Cookies.AllKeys)
-                {
-                    System.Diagnostics.Debug.WriteLine(
-                      "COOKIE => " + key +
-                      " = " + Request.Cookies[key]?.Value);
-                }
-                System.Diagnostics.Debug.WriteLine("========================================================================");
                 if (!IsConnected())
                     return Json(BuildResponse(false, "Socket is not connected."));
 
@@ -154,7 +117,8 @@ namespace BancsEventsLogger.Controllers
 
                 writer.AutoFlush = true;
 
-                writer.WriteLine(model.HostMessage);
+                writer.Write(model.HostMessage);
+                // System.Text.Encoding.ASCII.GetBytes
 
                 writer.Flush();
 
@@ -227,14 +191,6 @@ namespace BancsEventsLogger.Controllers
 
                 CurrentConnection.ClientSocket = socket;
                 CurrentConnection.IsConnected = true;
-                System.Diagnostics.Debug.WriteLine("=============================================================");
-                System.Diagnostics.Debug.WriteLine("Connected Seesion ID: " + Session.SessionID);
-                System.Diagnostics.Debug.WriteLine("Connected STORED Hash: " + socket.GetHashCode());
-                System.Diagnostics.Debug.WriteLine("Connected Is Socket Connected? : " + socket.Connected);
-                System.Diagnostics.Debug.WriteLine("Connected IsConnected flag? : " + CurrentConnection.IsConnected);
-                System.Diagnostics.Debug.WriteLine("Connect COOKIE: " + Request.Cookies["ASP.NET_SessionId"]?.Value.ToString());
-                System.Diagnostics.Debug.WriteLine("Connect Connection_Count: " + _connections.Count);
-                System.Diagnostics.Debug.WriteLine("=============================================================");
                 CurrentConnection.TxCount = 0;
                 CurrentConnection.RxCount = 0;
                 CurrentConnection.LastRequest = string.Empty;
@@ -378,8 +334,6 @@ namespace BancsEventsLogger.Controllers
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("Session Null= " + (Session == null));
-                System.Diagnostics.Debug.WriteLine("Session ID= " + (Session?.SessionID ?? "NULL"));
                 string response = CurrentConnection.LastResponse;
 
                 if (!string.IsNullOrEmpty(response))
@@ -443,7 +397,6 @@ namespace BancsEventsLogger.Controllers
         {
             try
             {
-                System.Diagnostics.Debug.WriteLine("**************** CLOSE CONNECTION IS CALLED ******************");
                 if (CurrentConnection.ClientSocket != null)
                 {
                     try
@@ -493,6 +446,7 @@ namespace BancsEventsLogger.Controllers
 
         #endregion
 
+        /* Old Not Working Code Just Kept for Reference*/
         /*private string ConnectionKey
         {
             get
@@ -505,7 +459,7 @@ namespace BancsEventsLogger.Controllers
                 return Session["ConnectionKey"].ToString();
             }
         }*/
-
+        /* Old Not Working Code Just Kept for Reference*/
         private string ConnectionKey
         {
             get
